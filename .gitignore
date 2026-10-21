@@ -58,3 +58,6 @@ GEMINI.md
 .goose/
 .roo/
 .kiro/
+
+# Internal working docs (literature review, proposal)
+docs/
