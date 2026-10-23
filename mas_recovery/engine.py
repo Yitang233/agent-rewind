@@ -23,9 +23,10 @@ import time
 from dataclasses import asdict, dataclass, field, replace
 from typing import Callable
 
+from . import cutoff as _cutoff
+from .effects import Intent, Ledger, POLICIES as EFFECT_POLICIES
 from .store import BOT, Store, canon, cut, digest, overlaps
-from .trace import Effect
-from .world import EFFECT_CLASS, World
+from .world import World
 
 POLICIES = ("restart", "rollback", "selective", "selective-d2")
 
@@ -45,10 +46,15 @@ class StepRecord:
     reads: list[tuple[str, str]] = field(default_factory=list)    # (cut path, hash), in read order
     writes: list[tuple[str, str]] = field(default_factory=list)   # (path, hash)
     values: dict = field(default_factory=dict)                    # path -> written value (for replay)
-    effects: list[Effect] = field(default_factory=list)           # S2 replaces this by intents
+    intents: list[Intent] = field(default_factory=list)           # tool calls (effects.py)
     cost: Cost = field(default_factory=Cost)
     reused: bool = False
     rerun_of: str | None = None
+    untrusted: bool = False                                       # label of this step's writes
+
+    @property
+    def effects(self) -> list[Intent]:                            # name used before S2
+        return self.intents
 
 
 def _stable(v) -> str:
@@ -61,9 +67,15 @@ class Step:
     agent: str
     fn: Callable[["StepContext"], None]
     when: Callable[["StepContext"], bool] | None = None   # reads the store; recorded as step reads
+    _code: str | None = field(default=None, init=False, repr=False, compare=False)
 
     @property
     def code(self) -> str:
+        if self._code is None:
+            self._code = self._hash_code()
+        return self._code
+
+    def _hash_code(self) -> str:
         try:
             src = inspect.getsource(self.fn)
         except (OSError, TypeError):
@@ -85,39 +97,63 @@ class Workflow:
         return name if name.startswith("/") else self.names[name]
 
 
+@dataclass
+class Env:
+    """What a recording needs besides the store: equality tier, effect ledger, optional meter."""
+    cutoff: object
+    ledger: Ledger
+    meter: object = None
+
+
 class StepContext:
     """What a step sees: `read`, `write`, `tool`, `ask`. Everything is recorded."""
 
     def __init__(self, store: Store, branch: str, world: World, llm, step: Step,
-                 overrides: dict | None = None, depth: int | None = None) -> None:
+                 overrides: dict | None = None, depth: int | None = None, env: Env | None = None) -> None:
         self.store, self.branch, self.world, self.llm = store, branch, world, llm
+        self.env = env or Env(_cutoff.EXACT, Ledger(world))
+        self.cutoff, self.ledger, self.meter = self.env.cutoff, self.env.ledger, self.env.meter
+        self.intents: list[Intent] = []
+        self.prior: dict[str, Intent] = {}        # old intents of this step by key (set by the ledger)
+        self.prior_used: set[str] = set()
+        self.local: dict[str, Intent] = {}
+        self.tainted = False
         self.step, self.agent, self.depth = step.name, step.agent, depth
         self.overrides = overrides or {}
         self.reads: list[tuple[str, str]] = []
         self.writes: dict[str, str] = {}
         self.values: dict = {}
         self.write_order: list[tuple[str, str]] = []
-        self.effects: list[Effect] = []
         self.cost = Cost()
 
     def read(self, path: str, default=None):
+        t0 = time.perf_counter_ns() if self.meter else 0
         if not any(overlaps(path, w) for w in self.writes):       # own output is not a dependency
-            c, h = self.store.cut(self.branch, path, self.depth)
+            c = cut(path, self.depth)
+            h = self.cutoff.hash(self.store, self.branch, c)
             if all(c != rc for rc, _ in self.reads):
                 self.reads.append((c, h))
-        return self.store.get(self.branch, path, default)
+        if self.ledger.untrusted and self.ledger.is_untrusted(path):
+            self.tainted = True
+        value = self.store.get(self.branch, path, default)
+        if self.meter:
+            self.meter.read_ns += time.perf_counter_ns() - t0
+            self.meter.reads += 1
+        return value
 
     def write(self, path: str, value) -> None:
+        t0 = time.perf_counter_ns() if self.meter else 0
         value = self.overrides.get((self.step, path), value)
         self.store.write(self.branch, path, value)
-        self.writes[path] = self.store.hash(self.branch, path)
+        self.writes[path] = self.cutoff.hash(self.store, self.branch, path)
         self.values[path] = value
         self.write_order.append((path, self.writes[path]))
+        if self.meter:
+            self.meter.write_ns += time.perf_counter_ns() - t0
+            self.meter.writes += 1
 
     def tool(self, tool: str, **args):
-        result = self.world.call(tool, **args)
-        self.effects.append(Effect(tool, EFFECT_CLASS[tool], args, result))
-        return result
+        return self.ledger.call(self, tool, args)
 
     def ask(self, task: str, inputs: dict) -> dict:
         out, used = self.llm.complete(self.agent, task, inputs)
@@ -136,6 +172,8 @@ class Run:
     records: list[StepRecord] = field(default_factory=list)
     orphans: list[str] = field(default_factory=list)
     report: dict = field(default_factory=dict)
+    cutoff: object = None          # equality tier the reads and writes were hashed with
+    effects: str = "naive"         # effect policy of this run
 
     def value(self, path: str, default=None):
         return self.store.get(self.branch, path, default)
@@ -153,14 +191,18 @@ class Run:
 
 
 def run_step(step: Step, store: Store, branch: str, world: World, llm, overrides=None,
-             depth: int | None = None, ctx: StepContext | None = None, rerun_of: str | None = None) -> StepRecord:
-    ctx = ctx or StepContext(store, branch, world, llm, step, overrides, depth)
+             depth: int | None = None, ctx: StepContext | None = None, rerun_of: str | None = None,
+             env: Env | None = None) -> StepRecord:
+    ctx = ctx or StepContext(store, branch, world, llm, step, overrides, depth, env)
     t0 = time.perf_counter()
     step.fn(ctx)
     ctx.cost.wall_s = time.perf_counter() - t0
     rec = StepRecord(step.name, step.agent, step.code, list(ctx.reads), list(ctx.write_order), dict(ctx.values),
-                     ctx.effects, ctx.cost, rerun_of=rerun_of)
+                     ctx.intents, ctx.cost, rerun_of=rerun_of, untrusted=ctx.tainted)
+    ctx.ledger.set_label([p for p, _ in rec.writes], ctx.tainted)
     store.note(branch, step.name, [p for p, _ in rec.reads], [p for p, _ in rec.writes])
+    if ctx.meter:
+        ctx.meter.add_record(rec)
     return rec
 
 
@@ -169,48 +211,56 @@ def producers(prior: Run, paths) -> set[str]:
     return {r.step for r in prior.records if any(overlaps(w, p) for w, _ in r.writes for p in paths)}
 
 
-def verified(old: StepRecord, store: Store, branch: str) -> bool:
+def verified(old: StepRecord, store: Store, branch: str, cutoff=_cutoff.EXACT) -> bool:
     """Every recorded read still hashes the same. `all` stops at the first mismatch, so a path
     the new execution would not read is never looked at."""
-    return all(store.hash(branch, p) == h for p, h in old.reads)
+    return all(cutoff.hash(store, branch, p) == h for p, h in old.reads)
 
 
-def _replay(old: StepRecord, store: Store, branch: str) -> StepRecord:
+def _replay(old: StepRecord, store: Store, branch: str, ledger: Ledger) -> StepRecord:
     for path, _ in old.writes:
         store.write(branch, path, old.values[path])
     store.note(branch, old.step, [p for p, _ in old.reads], [p for p, _ in old.writes])
-    return replace(old, reused=True)
-
-
-def _reconcile(old: StepRecord | None, world: World, report: dict) -> None:
-    """Current effect policy: compensate what can be, only report the irreversible."""
-    for e in (old.effects if old else ()):
-        if e.effect_class == "compensable" and not e.undone:
-            e.undone = world.compensate(e.tool, e.result)
-            report["compensated"] += 1
-        elif e.effect_class == "irreversible":
-            report["irreversible_redone"].append(e.tool)
+    return replace(old, reused=True, intents=ledger.replay(old))
 
 
 def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), policy: str = "selective",
             depth: int | None = None, overrides: dict | None = None, early_cutoff: bool = True,
-            store: Store | None = None, after_step: Callable | None = None) -> Run:
+            store: Store | None = None, after_step: Callable | None = None, cutoff=None,
+            effects: str | None = None, commit: bool = True, untrusted=(), verified_paths=(),
+            meter=None) -> Run:
     """Run `workflow` on a new branch of the store. See the module docstring.
 
     overrides   {(step, path): value} replaces what a step writes (fault injection).
     early_cutoff only matters for `selective-d2`: False marks every rerun write as changed.
     after_step  after_step(step, record, store, branch) -> True reruns the step once without
                 overrides (the always-verify baseline).
+    cutoff      'exact' | 'canonical' | a cutoff.Canonical; inherited from `prior`. Reads and
+                writes are hashed with it, so it is the early-cutoff tier.
+    effects     'naive' | 'diff' | 'diff+outbox' (effects.py); inherited from `prior`, else naive.
+    commit      False leaves staged irreversible intents in the outbox (a run that has not
+                reached its commit point); a later recovery can withdraw them without a leak.
+    untrusted / verified_paths  seeds for the trust labels (inbound messages, audited nodes).
+    meter       a deps.Meter that times read/write and counts journal bytes.
     """
     if policy not in POLICIES:
         raise ValueError(f"policy {policy!r}")
     wf = Workflow.of(workflow)
     if depth is None and prior is not None:
         depth = prior.depth
+    if cutoff is None and prior is not None:
+        cutoff = prior.cutoff
+    cutoff = _cutoff.get(cutoff)
+    effects = effects or (prior.effects if prior is not None else "naive")
+    ledger = Ledger(world, effects, untrusted, verified_paths)
+    if prior is not None:        # labels of the prior run's writes are rebuilt by replay and rerun
+        ledger.untrusted = set(untrusted)
+    env = Env(cutoff, ledger, meter)
     store = prior.store if prior is not None else (store or Store())
     branch = store.new_branch()
-    run = Run(wf, store, branch, depth, policy if prior is not None else "clean")
+    run = Run(wf, store, branch, depth, policy if prior is not None else "clean", cutoff=cutoff, effects=effects)
     report = {"rerun": [], "reused": [], "irreversible_redone": [], "compensated": 0}
+    clock0 = getattr(world, "clock_ms", 0.0)
     start = time.perf_counter()
     prior_recs = prior.last() if prior is not None else {}
     names = [s.name for s in wf.steps]
@@ -222,13 +272,18 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
         dirty = set(names[first:])
 
     def rerun(step: Step, old: StepRecord | None, ctx: StepContext | None) -> StepRecord:
-        _reconcile(old, world, report)
+        ctx = ctx or StepContext(store, branch, world, llm, step, overrides, depth, env)
+        ledger.begin(ctx, old)
         rec = run_step(step, store, branch, world, llm, overrides, depth, ctx, rerun_of=old.step if old else None)
+        ledger.end(ctx, old)
         report["rerun"].append(step.name)
         if after_step and after_step(step, rec, store, branch):
             run.records.append(rec)
-            _reconcile(rec, world, report)
-            rec = run_step(step, store, branch, world, llm, None, depth, rerun_of=step.name)
+            ctx = StepContext(store, branch, world, llm, step, None, depth, env)
+            first = rec
+            ledger.begin(ctx, first)
+            rec = run_step(step, store, branch, world, llm, None, depth, ctx, rerun_of=step.name)
+            ledger.end(ctx, first)
         return rec
 
     if policy == "selective-d2":
@@ -238,7 +293,7 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
         for old in prior.records:
             hit = old.step in dirty or any(overlaps(cut(p, depth), c) for p, _ in old.reads for c in changed)
             if not hit:
-                run.records.append(_replay(old, store, branch))
+                run.records.append(_replay(old, store, branch, ledger))
                 report["reused"].append(old.step)
                 continue
             step = next(s for s in wf.steps if s.name == old.step)
@@ -249,24 +304,31 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
     else:
         seen = set()
         for step in wf.steps:
-            ctx = StepContext(store, branch, world, llm, step, overrides, depth)
+            ctx = StepContext(store, branch, world, llm, step, overrides, depth, env)
             if step.when is not None and not step.when(ctx):
                 continue                                   # guard reads stay in ctx.reads for the record
             seen.add(step.name)
             old = prior_recs.get(step.name)
             if (old is not None and step.name not in dirty and old.code == step.code
-                    and verified(old, store, branch)):
-                run.records.append(_replay(old, store, branch))
+                    and (verified(old, store, branch) if cutoff is _cutoff.EXACT
+                         else verified(old, store, branch, cutoff))):
+                run.records.append(_replay(old, store, branch, ledger))
                 report["reused"].append(step.name)
                 continue
             run.records.append(rerun(step, old, ctx))
         for name, old in prior_recs.items():               # orphans: steps that no longer run
             if name not in seen:
-                _reconcile(old, world, report)
+                ledger.settle(old.intents, ())
                 run.orphans.append(name)
 
+    if commit:
+        ledger.commit(run.last().values())
+
     fresh = [r for r in run.records if not r.reused]
-    report.update(orphans=list(run.orphans), llm_calls=sum(r.cost.llm_calls for r in fresh),
+    report["compensated"] = ledger.stats["compensated"]
+    report["irreversible_redone"] = list(ledger.redone)
+    report.update(effects=dict(ledger.stats), held=list(ledger.held), world_ms=getattr(world, "clock_ms", 0.0) - clock0,
+                  orphans=list(run.orphans), llm_calls=sum(r.cost.llm_calls for r in fresh),
                   tokens=sum(r.cost.tokens for r in fresh), latency_s=time.perf_counter() - start)
     run.report = report
     return run
