@@ -156,6 +156,7 @@ class StepContext:
         return self.ledger.call(self, tool, args)
 
     def ask(self, task: str, inputs: dict) -> dict:
+        self.llm.cur_step = self.step                  # lets a replaying backend find this step's old output
         out, used = self.llm.complete(self.agent, task, inputs)
         self.cost.llm_calls += 1
         self.cost.tokens += used
