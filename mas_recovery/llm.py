@@ -137,7 +137,10 @@ class CachedLLM:
         self.inner = inner
         self.cache: dict[str, dict] = {}
         self.atoms: dict[str, list] = {}
+        self.extra: dict[str, tuple] = {}
         self.last_atoms: list = []
+        self.last_conf: dict = {}
+        self.last_nominal = 0
         self.calls = self.tokens = self.hits = 0
 
     def complete(self, role: str, task: str, inputs: dict) -> tuple[dict, int]:
@@ -145,6 +148,7 @@ class CachedLLM:
         if key in self.cache:
             self.hits += 1
             self.last_atoms = self.atoms.get(key, [])
+            self.last_conf, self.last_nominal = self.extra.get(key, ({}, 0))
             return self.cache[key], 0
         if hasattr(self, "cur_step"):
             self.inner.cur_step = self.cur_step
@@ -153,6 +157,10 @@ class CachedLLM:
         self.cache[key] = out
         self.last_atoms = list(getattr(self.inner, "last_atoms", []) or [])
         self.atoms[key] = self.last_atoms
+        st = getattr(self.inner, "last_stats", None) or {}
+        self.last_conf = getattr(self.inner, "last_conf", None) or {}
+        self.last_nominal = (st.get("orig_prefill", st.get("prefill", 0)) + st.get("orig_decoded", st.get("decoded", 0))) or used
+        self.extra[key] = (self.last_conf, self.last_nominal)
         self.calls += 1
         self.tokens += used
         return out, used
@@ -238,6 +246,8 @@ class LlamaCppLLM:
             row = self.db.execute("select text,tokens,logprobs,stats from calls where key=?", (key,)).fetchone()
             if row:
                 stats = dict(json.loads(row[3]), cached_call=True, orig_wall_s=json.loads(row[3])["wall_s"],
+                             orig_prefill=json.loads(row[3]).get("prefill", 0),
+                             orig_decoded=json.loads(row[3]).get("decoded", 0),
                              cached_prefix=0, prefill=0, decoded=0, wall_s=0.0)
                 self.totals["cache_hits"] += 1
                 return {"text": row[0], "tokens": json.loads(row[1]), "logprobs": json.loads(row[2]),

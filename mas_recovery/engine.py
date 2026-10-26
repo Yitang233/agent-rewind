@@ -51,6 +51,7 @@ class StepRecord:
     reused: bool = False
     rerun_of: str | None = None
     untrusted: bool = False                                       # label of this step's writes
+    calls: list[dict] = field(default_factory=list)               # atom-bearing model calls (audit.py)
 
     @property
     def effects(self) -> list[Intent]:                            # name used before S2
@@ -125,6 +126,7 @@ class StepContext:
         self.values: dict = {}
         self.write_order: list[tuple[str, str]] = []
         self.cost = Cost()
+        self.calls: list[dict] = []
 
     def read(self, path: str, default=None):
         t0 = time.perf_counter_ns() if self.meter else 0
@@ -160,6 +162,10 @@ class StepContext:
         out, used = self.llm.complete(self.agent, task, inputs)
         self.cost.llm_calls += 1
         self.cost.tokens += used
+        if "groups" in inputs and getattr(self.llm, "last_atoms", None):      # kept for the audits
+            self.calls.append({"groups": inputs["groups"], "atoms": [dict(a) for a in self.llm.last_atoms],
+                               "answer": out, "conf": getattr(self.llm, "last_conf", None) or {},
+                               "nominal": getattr(self.llm, "last_nominal", None) or used})
         return out
 
 
@@ -175,6 +181,7 @@ class Run:
     report: dict = field(default_factory=dict)
     cutoff: object = None          # equality tier the reads and writes were hashed with
     effects: str = "naive"         # effect policy of this run
+    audits: dict = field(default_factory=dict)   # "<step>/<k>" -> verdict (audit.py)
 
     def value(self, path: str, default=None):
         return self.store.get(self.branch, path, default)
@@ -199,7 +206,8 @@ def run_step(step: Step, store: Store, branch: str, world: World, llm, overrides
     step.fn(ctx)
     ctx.cost.wall_s = time.perf_counter() - t0
     rec = StepRecord(step.name, step.agent, step.code, list(ctx.reads), list(ctx.write_order), dict(ctx.values),
-                     ctx.intents, ctx.cost, rerun_of=rerun_of, untrusted=ctx.tainted)
+                     ctx.intents, ctx.cost, rerun_of=rerun_of, untrusted=ctx.tainted,
+                     calls=ctx.calls)
     ctx.ledger.set_label([p for p, _ in rec.writes], ctx.tainted)
     store.note(branch, step.name, [p for p, _ in rec.reads], [p for p, _ in rec.writes])
     if ctx.meter:
@@ -229,7 +237,7 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
             depth: int | None = None, overrides: dict | None = None, early_cutoff: bool = True,
             store: Store | None = None, after_step: Callable | None = None, cutoff=None,
             effects: str | None = None, commit: bool = True, untrusted=(), verified_paths=(),
-            meter=None) -> Run:
+            meter=None, audit=None) -> Run:
     """Run `workflow` on a new branch of the store. See the module docstring.
 
     overrides   {(step, path): value} replaces what a step writes (fault injection).
@@ -243,6 +251,9 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
                 reached its commit point); a later recovery can withdraw them without a leak.
     untrusted / verified_paths  seeds for the trust labels (inbound messages, audited nodes).
     meter       a deps.Meter that times read/write and counts journal bytes.
+    audit       an audit.Auditor: after each step (rerun or reused) its atoms are checked against
+                their cited sources; verdicts are nodes `/audit/<step>/_atoms/<k>` and are reused
+                from `prior.audits` while their key (atom text, source hashes) is unchanged.
     """
     if policy not in POLICIES:
         raise ValueError(f"policy {policy!r}")
@@ -272,6 +283,10 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
         first = min(i for i, n in enumerate(names) if n in dirty)
         dirty = set(names[first:])
 
+    def audited(rec: StepRecord) -> None:
+        if audit is not None:
+            audit.after_step(run, rec, prior, store, branch, cutoff)
+
     def rerun(step: Step, old: StepRecord | None, ctx: StepContext | None) -> StepRecord:
         ctx = ctx or StepContext(store, branch, world, llm, step, overrides, depth, env)
         ledger.begin(ctx, old)
@@ -295,6 +310,7 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
             hit = old.step in dirty or any(overlaps(cut(p, depth), c) for p, _ in old.reads for c in changed)
             if not hit:
                 run.records.append(_replay(old, store, branch, ledger))
+                audited(run.records[-1])
                 report["reused"].append(old.step)
                 continue
             step = next(s for s in wf.steps if s.name == old.step)
@@ -302,6 +318,7 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
             old_h = dict(old.writes)
             changed |= {cut(p, depth) for p, h in rec.writes if not early_cutoff or old_h.get(p) != h}
             run.records.append(rec)
+            audited(rec)
     else:
         seen = set()
         for step in wf.steps:
@@ -314,9 +331,11 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
                     and (verified(old, store, branch) if cutoff is _cutoff.EXACT
                          else verified(old, store, branch, cutoff))):
                 run.records.append(_replay(old, store, branch, ledger))
+                audited(run.records[-1])
                 report["reused"].append(step.name)
                 continue
             run.records.append(rerun(step, old, ctx))
+            audited(run.records[-1])
         for name, old in prior_recs.items():               # orphans: steps that no longer run
             if name not in seen:
                 ledger.settle(old.intents, ())
@@ -331,5 +350,7 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
     report.update(effects=dict(ledger.stats), held=list(ledger.held), world_ms=getattr(world, "clock_ms", 0.0) - clock0,
                   orphans=list(run.orphans), llm_calls=sum(r.cost.llm_calls for r in fresh),
                   tokens=sum(r.cost.tokens for r in fresh), latency_s=time.perf_counter() - start)
+    if audit is not None:
+        report["audit"] = audit.summary(run)
     run.report = report
     return run
