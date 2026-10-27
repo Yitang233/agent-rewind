@@ -1,0 +1,21 @@
+{
+ "name": "S6/measure",
+ "note": "S6 acceptance and timing sample: clean W3/W4 on 7B (5 repeats), then recovery and audit samples on 7B and 1.5B for the full.json estimate.",
+ "experiments": [
+  {"exp": "S6a", "workloads": ["w3", "w4.ipi", "w4.byz"], "faults": ["clean"], "methods": ["none"],
+   "flags": {"style": ["atoms"]}, "models": ["7b"], "repeats": 5},
+  {"exp": "S6b", "workloads": [{"name": "w1", "faults": ["wrong_capacity"]}, {"name": "w3", "faults": ["wrong_issue"]},
+                              {"name": "w4.ipi", "faults": ["inject_item"]}, {"name": "w4.byz", "faults": ["byz_factcheck"]}],
+   "methods": ["selective"], "flags": {"replay": ["off", "resync"], "style": ["atoms"], "effects": ["diff"]},
+   "models": ["7b"], "repeats": 2},
+  {"exp": "S6c", "workloads": [{"name": "w1", "faults": ["wrong_capacity"]}, {"name": "w3", "faults": ["wrong_issue"]},
+                              {"name": "w4.ipi", "faults": ["inject_item"]}],
+   "methods": ["selective", "restart"], "flags": {"style": ["cot"], "effects": ["diff"]}, "models": ["7b"], "repeats": 1},
+  {"exp": "S6d", "workloads": [{"name": "w3", "faults": ["wrong_issue"]}, {"name": "w4.ipi", "faults": ["inject_item"]}],
+   "methods": ["selective"], "flags": {"audit": ["m3+m4"], "style": ["atoms"], "effects": ["diff+outbox"]}, "models": ["7b"], "repeats": 1},
+  {"exp": "S6e", "workloads": [{"name": "w1", "faults": ["wrong_capacity"]}, {"name": "w3", "faults": ["wrong_issue"]},
+                              {"name": "w4.ipi", "faults": ["inject_item"]}, {"name": "w4.byz", "faults": ["byz_factcheck"]}],
+   "methods": ["selective"], "flags": {"replay": ["off", "resync"], "style": ["atoms"], "effects": ["diff"]},
+   "models": ["1.5b"], "repeats": 1}
+ ]
+}

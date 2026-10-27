@@ -188,6 +188,12 @@ class LlamaBackend:
     def eval(self, ids: list[int]):
         llm = self.llm
         base, n = llm.n_tokens, len(ids)
+        nb = llm.n_batch
+        if n > nb:      # longer than one batch (a long prompt): chunk exactly as llm.eval does, keep logits of the last chunk
+            split = ((n - 1) // nb) * nb
+            llm._ctx.kv_cache_seq_rm(-1, base, -1)
+            llm.eval(ids[:split])
+            return self.eval(ids[split:])
         llm._ctx.kv_cache_seq_rm(-1, base, -1)
         llm._batch.set_batch(batch=ids, n_past=base, logits_all=True)
         llm._ctx.decode(llm._batch)

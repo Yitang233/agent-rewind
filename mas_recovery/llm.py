@@ -329,8 +329,14 @@ class LlamaCppLLM:
                 parsed.answer = whole["answer"] if isinstance(whole.get("answer"), dict) else None
                 parsed.atoms = [{"cites": [], "text": str(whole.get("reasoning", ""))}]
                 parsed.ok = parsed.answer is not None
-            except (ValueError, AttributeError):
-                pass
+            except (ValueError, AttributeError):       # a stray brace/newline inside the free text: recover the answer object
+                m = re.search(r'"answer"\s*:\s*', g["text"])
+                try:
+                    ans = json.JSONDecoder().raw_decode(g["text"], m.end())[0] if m else None
+                except ValueError:
+                    ans = None
+                if isinstance(ans, dict):
+                    parsed.answer, parsed.atoms, parsed.ok = ans, [{"cites": [], "text": ""}], True
             parsed.spans = []
             conf = {"atoms": [], "answer": {}}
         else:

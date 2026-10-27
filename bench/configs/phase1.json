@@ -1,0 +1,21 @@
+{
+ "name": "phase1",
+ "max_hours": null,
+ "note": "E1-E4. Scripted cells take seconds; the E1 7B pass measures real propagation (3 repeats).",
+ "experiments": [
+  {"exp": "E1", "workloads": ["w1", "w3", "w4.ipi", "w4.byz"], "faults": ["clean", "*"], "methods": ["none"],
+   "flags": {"style": ["atoms"]}, "models": ["scripted", "7b"], "repeats": 3},
+  {"exp": "E2", "workloads": [{"name": "w2", "params": {"n": 24, "layers": 4},
+                               "grid": {"fan_in": [1, 2, 3], "shared_keys": [0, 3, 6], "position": [0.1, 0.3, 0.5, 0.7, 0.9]}}],
+   "faults": ["auto"], "methods": ["restart", "rollback", "selective-d2", "selective"], "models": ["scripted"], "repeats": 5},
+  {"exp": "E3", "workloads": [{"name": "w2", "params": {"n": 24, "layers": 4, "fan_in": 2, "shared_keys": 3},
+                               "grid": {"position": [0.2, 0.5, 0.8]}}, "w1"],
+   "faults": ["*"], "methods": ["selective"], "flags": {"depth": ["agent", "step", "artifact", "field"],
+   "cutoff": ["exact", "canonical"]}, "models": ["scripted"], "repeats": 5},
+  {"exp": "E4", "workloads": [{"name": "w2", "params": {"n": 24, "layers": 4, "fan_in": 2, "shared_keys": 3,
+                               "effect_mix": {"none": 1, "read": 1, "idempotent": 1, "compensable": 2, "irreversible": 2},
+                               "position": 0.4}}, "w1", "w3"],
+   "faults": ["*"], "methods": ["restart", "rollback", "selective"],
+   "flags": {"effects": ["naive", "diff", "diff+outbox"]}, "models": ["scripted"], "repeats": 5}
+ ]
+}
