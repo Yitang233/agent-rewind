@@ -1,0 +1,9 @@
+{
+ "name": "phase1_baselines",
+ "max_hours": null,
+ "note": "Phase 1 baselines: full restart, and always-verify (audit every step) then restart from the first flag. Same workloads and faults as phase1 E1; 1 repeat on 7B.",
+ "experiments": [
+  {"exp": "E1b", "workloads": ["w1", "w3", "w4.ipi", "w4.byz"], "faults": ["*"], "methods": ["restart", "selective"],
+   "flags": {"style": ["atoms"], "audit": ["none", "always"]}, "models": ["scripted", "7b"], "repeats": 1}
+ ]
+}
