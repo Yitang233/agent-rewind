@@ -1,34 +1,406 @@
 {
  "name": "full",
- "max_hours": null,
- "note": "E5-E8, repeats 5, models 1.5B then 7B (E7 on 7B only: audits were calibrated on it). W4 runs one fault per scenario.",
+ "max_hours": 8,
+ "note": "E5-E8 on 7B only, W1/W3 repeats 5, W4 repeats 3. Cut for the 8 h budget (S6 estimate 13.6 h): W4 repeats 5->3, then the whole 1.5B pass (split-atoms and MiniCheck arms do not exist). Experiment order E8,E5,E6,E7 so --max-hours trims the tail (E7) first.",
  "experiments": [
-  {"exp": "E5", "workloads": [{"name": "w1", "faults": ["wrong_capacity", "inject_agenda"]},
-                              {"name": "w3", "faults": ["wrong_issue", "stale_code"]},
-                              {"name": "w4.ipi", "faults": ["inject_item"]}, {"name": "w4.byz", "faults": ["byz_factcheck"]}],
-   "methods": ["selective"], "flags": {"replay": ["off", "prefix", "resync"], "style": ["cot", "atoms"], "effects": ["diff"]},
-   "models": ["1.5b", "7b"], "repeats": 5},
-  {"exp": "E6", "workloads": ["w1", "w3", "w4.ipi", "w4.byz"], "faults": ["clean"], "methods": ["none"],
-   "flags": {"style": ["cot", "atoms"]}, "models": ["1.5b", "7b"], "repeats": 5},
-  {"exp": "E7", "workloads": [{"name": "w1", "faults": ["wrong_capacity", "inject_agenda"]},
-                              {"name": "w3", "faults": ["wrong_issue"]},
-                              {"name": "w4.ipi", "faults": ["inject_item"]}, {"name": "w4.byz", "faults": ["byz_factcheck"]}],
-   "methods": ["selective"],
-   "flags": {"audit": ["none", "always", "uniform", "m3", "m3+cache", "m3+m4"], "style": ["atoms"], "effects": ["diff"]},
-   "models": ["7b"], "repeats": 5},
-  {"exp": "E7", "workloads": ["w1", "w3", "w4.ipi", "w4.byz"], "faults": ["clean"], "methods": ["none"],
-   "flags": {"audit": ["none", "always", "uniform", "m3", "m3+cache", "m3+m4"], "style": ["atoms"]},
-   "models": ["7b"], "repeats": 5},
-  {"exp": "E8", "workloads": [{"name": "w1", "faults": ["wrong_capacity", "inject_agenda"]},
-                              {"name": "w3", "faults": ["wrong_issue", "stale_code"]},
-                              {"name": "w4.ipi", "faults": ["inject_item"]}, {"name": "w4.byz", "faults": ["byz_factcheck"]}],
+  {
+   "exp": "E8",
+   "workloads": [
+    {
+     "name": "w1",
+     "faults": [
+      "wrong_capacity",
+      "inject_agenda"
+     ]
+    },
+    {
+     "name": "w3",
+     "faults": [
+      "wrong_issue",
+      "stale_code"
+     ]
+    }
+   ],
    "variants": [
-     {"label": "restart", "method": "restart", "flags": {"style": "cot", "effects": "naive"}},
-     {"label": "rollback", "method": "rollback", "flags": {"style": "cot", "effects": "naive"}},
-     {"label": "selective", "method": "selective", "flags": {"style": "cot", "effects": "diff"}},
-     {"label": "selective+M1+M2", "method": "selective", "flags": {"style": "atoms", "replay": "resync", "effects": "diff+outbox"}},
-     {"label": "selective+M1+M2+M3/M4", "method": "selective",
-      "flags": {"style": "atoms", "replay": "resync", "effects": "diff+outbox", "audit": "m3+m4"}}],
-   "models": ["1.5b", "7b"], "repeats": 5}
+    {
+     "label": "restart",
+     "method": "restart",
+     "flags": {
+      "style": "cot",
+      "effects": "naive"
+     }
+    },
+    {
+     "label": "rollback",
+     "method": "rollback",
+     "flags": {
+      "style": "cot",
+      "effects": "naive"
+     }
+    },
+    {
+     "label": "selective",
+     "method": "selective",
+     "flags": {
+      "style": "cot",
+      "effects": "diff"
+     }
+    },
+    {
+     "label": "selective+M1+M2",
+     "method": "selective",
+     "flags": {
+      "style": "atoms",
+      "replay": "resync",
+      "effects": "diff+outbox"
+     }
+    },
+    {
+     "label": "selective+M1+M2+M3/M4",
+     "method": "selective",
+     "flags": {
+      "style": "atoms",
+      "replay": "resync",
+      "effects": "diff+outbox",
+      "audit": "m3+m4"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeats": 5
+  },
+  {
+   "exp": "E8",
+   "workloads": [
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "inject_item"
+     ]
+    },
+    {
+     "name": "w4.byz",
+     "faults": [
+      "byz_factcheck"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "restart",
+     "method": "restart",
+     "flags": {
+      "style": "cot",
+      "effects": "naive"
+     }
+    },
+    {
+     "label": "rollback",
+     "method": "rollback",
+     "flags": {
+      "style": "cot",
+      "effects": "naive"
+     }
+    },
+    {
+     "label": "selective",
+     "method": "selective",
+     "flags": {
+      "style": "cot",
+      "effects": "diff"
+     }
+    },
+    {
+     "label": "selective+M1+M2",
+     "method": "selective",
+     "flags": {
+      "style": "atoms",
+      "replay": "resync",
+      "effects": "diff+outbox"
+     }
+    },
+    {
+     "label": "selective+M1+M2+M3/M4",
+     "method": "selective",
+     "flags": {
+      "style": "atoms",
+      "replay": "resync",
+      "effects": "diff+outbox",
+      "audit": "m3+m4"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeats": 3
+  },
+  {
+   "exp": "E5",
+   "workloads": [
+    {
+     "name": "w1",
+     "faults": [
+      "wrong_capacity",
+      "inject_agenda"
+     ]
+    },
+    {
+     "name": "w3",
+     "faults": [
+      "wrong_issue",
+      "stale_code"
+     ]
+    }
+   ],
+   "methods": [
+    "selective"
+   ],
+   "flags": {
+    "replay": [
+     "off",
+     "prefix",
+     "resync"
+    ],
+    "style": [
+     "cot",
+     "atoms"
+    ],
+    "effects": [
+     "diff"
+    ]
+   },
+   "models": [
+    "7b"
+   ],
+   "repeats": 5
+  },
+  {
+   "exp": "E5",
+   "workloads": [
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "inject_item"
+     ]
+    },
+    {
+     "name": "w4.byz",
+     "faults": [
+      "byz_factcheck"
+     ]
+    }
+   ],
+   "methods": [
+    "selective"
+   ],
+   "flags": {
+    "replay": [
+     "off",
+     "prefix",
+     "resync"
+    ],
+    "style": [
+     "cot",
+     "atoms"
+    ],
+    "effects": [
+     "diff"
+    ]
+   },
+   "models": [
+    "7b"
+   ],
+   "repeats": 3
+  },
+  {
+   "exp": "E6",
+   "workloads": [
+    "w1",
+    "w3"
+   ],
+   "faults": [
+    "clean"
+   ],
+   "methods": [
+    "none"
+   ],
+   "flags": {
+    "style": [
+     "cot",
+     "atoms"
+    ]
+   },
+   "models": [
+    "7b"
+   ],
+   "repeats": 5
+  },
+  {
+   "exp": "E6",
+   "workloads": [
+    "w4.ipi",
+    "w4.byz"
+   ],
+   "faults": [
+    "clean"
+   ],
+   "methods": [
+    "none"
+   ],
+   "flags": {
+    "style": [
+     "cot",
+     "atoms"
+    ]
+   },
+   "models": [
+    "7b"
+   ],
+   "repeats": 3
+  },
+  {
+   "exp": "E7",
+   "workloads": [
+    {
+     "name": "w1",
+     "faults": [
+      "wrong_capacity",
+      "inject_agenda"
+     ]
+    },
+    {
+     "name": "w3",
+     "faults": [
+      "wrong_issue"
+     ]
+    }
+   ],
+   "methods": [
+    "selective"
+   ],
+   "flags": {
+    "audit": [
+     "none",
+     "always",
+     "uniform",
+     "m3",
+     "m3+cache",
+     "m3+m4"
+    ],
+    "style": [
+     "atoms"
+    ],
+    "effects": [
+     "diff"
+    ]
+   },
+   "models": [
+    "7b"
+   ],
+   "repeats": 5
+  },
+  {
+   "exp": "E7",
+   "workloads": [
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "inject_item"
+     ]
+    },
+    {
+     "name": "w4.byz",
+     "faults": [
+      "byz_factcheck"
+     ]
+    }
+   ],
+   "methods": [
+    "selective"
+   ],
+   "flags": {
+    "audit": [
+     "none",
+     "always",
+     "uniform",
+     "m3",
+     "m3+cache",
+     "m3+m4"
+    ],
+    "style": [
+     "atoms"
+    ],
+    "effects": [
+     "diff"
+    ]
+   },
+   "models": [
+    "7b"
+   ],
+   "repeats": 3
+  },
+  {
+   "exp": "E7",
+   "workloads": [
+    "w1",
+    "w3"
+   ],
+   "faults": [
+    "clean"
+   ],
+   "methods": [
+    "none"
+   ],
+   "flags": {
+    "audit": [
+     "none",
+     "always",
+     "uniform",
+     "m3",
+     "m3+cache",
+     "m3+m4"
+    ],
+    "style": [
+     "atoms"
+    ]
+   },
+   "models": [
+    "7b"
+   ],
+   "repeats": 5
+  },
+  {
+   "exp": "E7",
+   "workloads": [
+    "w4.ipi",
+    "w4.byz"
+   ],
+   "faults": [
+    "clean"
+   ],
+   "methods": [
+    "none"
+   ],
+   "flags": {
+    "audit": [
+     "none",
+     "always",
+     "uniform",
+     "m3",
+     "m3+cache",
+     "m3+m4"
+    ],
+    "style": [
+     "atoms"
+    ]
+   },
+   "models": [
+    "7b"
+   ],
+   "repeats": 3
+  }
  ]
 }

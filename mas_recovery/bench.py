@@ -448,6 +448,7 @@ def main(argv=None) -> int:
     ap.add_argument("--only", default="")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--estimate", default=None, help="cells.jsonl with measured real cells")
+    ap.add_argument("--resume", action="store_true", help="accepted; finished cells are always skipped by key")
     ap.add_argument("--out", default=None)
     a = ap.parse_args(argv)
     cfg = json.load(open(a.config))
