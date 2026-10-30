@@ -2,7 +2,7 @@ import os
 import tempfile
 import unittest
 
-from mas_recovery.store import BOT, Store, cut, overlaps
+from agent_rewind.store import BOT, Store, cut, overlaps
 
 
 class StoreTest(unittest.TestCase):

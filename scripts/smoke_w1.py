@@ -11,8 +11,8 @@ import sys
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from mas_recovery.llm import CachedLLM, LlamaCppLLM          # noqa: E402
-from mas_recovery.workloads import booking                   # noqa: E402
+from agent_rewind.llm import CachedLLM, LlamaCppLLM          # noqa: E402
+from agent_rewind.workloads import booking                   # noqa: E402
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 

@@ -1,13 +1,13 @@
 import copy
 import unittest
 
-from mas_recovery import audit as AU
-from mas_recovery.engine import execute
-from mas_recovery.llm import CachedLLM, ScriptedLLM
-from mas_recovery.recovery import recover
-from mas_recovery.store import canon
-from mas_recovery.workloads import booking
-from mas_recovery.world import World
+from agent_rewind import audit as AU
+from agent_rewind.engine import execute
+from agent_rewind.llm import CachedLLM, ScriptedLLM
+from agent_rewind.recovery import recover
+from agent_rewind.store import canon
+from agent_rewind.workloads import booking
+from agent_rewind.world import World
 
 K = 3
 

@@ -1,9 +1,9 @@
 import json
 import unittest
 
-from mas_recovery import atoms as A
-from mas_recovery.llm import CachedLLM, ScriptedLLM
-from mas_recovery.workloads import booking
+from agent_rewind import atoms as A
+from agent_rewind.llm import CachedLLM, ScriptedLLM
+from agent_rewind.workloads import booking
 
 G = [A.Group("Rooms", {"/a/A": 8, "/a/B": 16}), A.Group("Team", {"/kv/team/size": 12})]
 TEXT = ('{"atoms":[{"cites":["/a/A","/a/B"],"text":"A 8, B 16"},{"cites":["/kv/team/size"],"text":"12"}],'

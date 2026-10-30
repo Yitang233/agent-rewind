@@ -19,12 +19,12 @@ import sys
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from mas_recovery.engine import execute                       # noqa: E402
-from mas_recovery.faults import Fault                         # noqa: E402
-from mas_recovery.llm import CachedLLM, LlamaCppLLM           # noqa: E402
-from mas_recovery.recovery import recover                     # noqa: E402
-from mas_recovery.workloads import booking                    # noqa: E402
-from mas_recovery.world import World                          # noqa: E402
+from agent_rewind.engine import execute                       # noqa: E402
+from agent_rewind.faults import Fault                         # noqa: E402
+from agent_rewind.llm import CachedLLM, LlamaCppLLM           # noqa: E402
+from agent_rewind.recovery import recover                     # noqa: E402
+from agent_rewind.workloads import booking                    # noqa: E402
+from agent_rewind.world import World                          # noqa: E402
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 OUT = os.path.join(ROOT, "runs/S4")
@@ -62,7 +62,7 @@ def drift_probe(inner, prompt, plain_ids, replay_ids, i):
     numerical noise means the flip is drift, not a replay error."""
     import numpy as np
 
-    from mas_recovery import replay as R
+    from agent_rewind import replay as R
     if i >= len(plain_ids) or i >= len(replay_ids):
         return None
     llm = inner.llm

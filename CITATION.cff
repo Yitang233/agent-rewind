@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the report below."
+title: "agent-rewind"
+type: software
+authors:
+  - given-names: Yitang
+    family-names: Gao
+  - given-names: Qinlin
+    family-names: Chen
+  - given-names: Xueru
+    family-names: Song
+  - given-names: Kai
+    family-names: Zhang
+repository-code: "https://github.com/Yitang233/agent-rewind"
+license: MIT
+version: 0.1.0
+preferred-citation:
+  type: report
+  title: "Provenance All the Way Down: Selective Recovery for Multi-Agent LLM Workflows"
+  authors:
+    - given-names: Yitang
+      family-names: Gao
+    - given-names: Qinlin
+      family-names: Chen
+    - given-names: Xueru
+      family-names: Song
+    - given-names: Kai
+      family-names: Zhang
+  institution:
+    name: "University of California, San Diego"
+  year: 2026
+  url: "https://github.com/Yitang233/agent-rewind"

@@ -1,8 +1,8 @@
 """Rerun counts for one W2 DAG under all methods -> runs/S2/smoke.json."""
 import copy, json, random, sys
 from pathlib import Path
-from mas_recovery.engine import execute
-from mas_recovery.workloads.dag import generate
+from agent_rewind.engine import execute
+from agent_rewind.workloads.dag import generate
 
 dag = generate(n=40, layers=5, fan_in=2, shared_keys=3, seed=7)
 clean = execute(dag.workflow, dag.world(), None, effects="diff+outbox")

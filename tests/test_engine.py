@@ -6,13 +6,13 @@ and recovers with `selective` (verifying trace) and `selective-d2` (forward prop
 import unittest
 from unittest import mock
 
-from mas_recovery import engine
-from mas_recovery.engine import Step, Workflow, execute, producers
-from mas_recovery.experiment import clean_reference, compare
-from mas_recovery.faults import FAULTS
-from mas_recovery.llm import CachedLLM, ScriptedLLM
-from mas_recovery.store import Store
-from mas_recovery.world import World
+from agent_rewind import engine
+from agent_rewind.engine import Step, Workflow, execute, producers
+from agent_rewind.experiment import clean_reference, compare
+from agent_rewind.faults import FAULTS
+from agent_rewind.llm import CachedLLM, ScriptedLLM
+from agent_rewind.store import Store
+from agent_rewind.world import World
 
 
 def setup(steps, fault=None):

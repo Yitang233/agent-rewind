@@ -12,8 +12,8 @@ import random
 import time
 import unittest
 
-from mas_recovery.engine import execute
-from mas_recovery.workloads.dag import generate
+from agent_rewind.engine import execute
+from agent_rewind.workloads.dag import generate
 
 N_CASES = 520
 EFF = "diff+outbox"

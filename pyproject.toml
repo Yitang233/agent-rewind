@@ -1,11 +1,32 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "mas-recovery"
+name = "agent-rewind"
 version = "0.1.0"
-description = "Failure propagation and selective recovery in multi-agent workflows (CS 291A)"
+description = "Provenance-based selective recovery for multi-agent LLM workflows"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+  { name = "Yitang Gao" },
+  { name = "Qinlin Chen" },
+  { name = "Xueru Song" },
+  { name = "Kai Zhang" },
+]
 requires-python = ">=3.10"
 dependencies = []
+keywords = ["multi-agent systems", "LLM agents", "fault recovery", "provenance", "incremental computation"]
 
 [project.optional-dependencies]
 llm = ["llama-cpp-python==0.3.36", "huggingface_hub"]
 audit = ["transformers", "torch"]
 plot = ["matplotlib"]
+
+[project.urls]
+Repository = "https://github.com/Yitang233/agent-rewind"
+Report = "https://github.com/Yitang233/agent-rewind/blob/main/report/main.pdf"
+
+[tool.setuptools.packages.find]
+include = ["agent_rewind*"]

@@ -7,7 +7,7 @@ Phases (one process, one model):
   faults     faults x policies x variants E -> runs/S5/audit.jsonl (cell = variant/fault/policy[/seed])
   summarize  -> runs/S5/summary.json
 
-Usage: caffeinate -i .venv/bin/python scripts/audit_check.py --phase all
+Usage: caffeinate -i python scripts/audit_check.py --phase all
 """
 import argparse
 import gc
@@ -19,12 +19,12 @@ import sys
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from mas_recovery import audit as AU                          # noqa: E402
-from mas_recovery.engine import execute, producers            # noqa: E402
-from mas_recovery.llm import CachedLLM, LlamaCppLLM           # noqa: E402
-from mas_recovery.store import overlaps                       # noqa: E402
-from mas_recovery.workloads import booking                    # noqa: E402
-from mas_recovery.world import World                          # noqa: E402
+from agent_rewind import audit as AU                          # noqa: E402
+from agent_rewind.engine import execute, producers            # noqa: E402
+from agent_rewind.llm import CachedLLM, LlamaCppLLM           # noqa: E402
+from agent_rewind.store import overlaps                       # noqa: E402
+from agent_rewind.workloads import booking                    # noqa: E402
+from agent_rewind.world import World                          # noqa: E402
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 OUT = os.path.join(ROOT, "runs/S5")

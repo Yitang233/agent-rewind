@@ -1,9 +1,9 @@
 """P2 counters: ns per read/write and journal bytes per step, by depth tier."""
 import unittest
 
-from mas_recovery.deps import TIERS, Meter, depth_of, measure
-from mas_recovery.engine import execute
-from mas_recovery.workloads.dag import generate
+from agent_rewind.deps import TIERS, Meter, depth_of, measure
+from agent_rewind.engine import execute
+from agent_rewind.workloads.dag import generate
 
 
 class Overhead(unittest.TestCase):

@@ -1,6 +1,6 @@
 """Resumable grid runner for every experiment (E1-E8).
 
-    python -m mas_recovery.bench --config bench/configs/full.json [--dry-run] [--max-hours H]
+    python -m agent_rewind.bench --config bench/configs/full.json [--dry-run] [--max-hours H]
                                  [--only E5,E8] [--limit N] [--estimate runs/S6/measure/cells.jsonl]
 
 A config is {"name", "max_hours", "experiments": [...]}. An experiment is a grid
@@ -208,7 +208,7 @@ class Models:
         ps = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True).stdout
         busy = [ln.strip() for ln in ps.splitlines() if ln.split() and ln.split()[0] != str(os.getpid())
                 and os.path.basename(ln.split()[1]).startswith("python")
-                and re.search(r"mas_recovery[.]bench|replay_check|audit_check|bench_llm", ln)]
+                and re.search(r"agent_rewind[.]bench|replay_check|audit_check|bench_llm", ln)]
         if busy:
             raise RuntimeError("another model process is running: " + busy[0])
         from .llm import LlamaCppLLM

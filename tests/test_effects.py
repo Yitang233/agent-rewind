@@ -2,10 +2,10 @@
 import copy
 import unittest
 
-from mas_recovery.cutoff import Canonical, get as get_cutoff
-from mas_recovery.effects import Intent, action, intent_key
-from mas_recovery.engine import Step, Workflow, execute
-from mas_recovery.world import LATENCY_MS, World
+from agent_rewind.cutoff import Canonical, get as get_cutoff
+from agent_rewind.effects import Intent, action, intent_key
+from agent_rewind.engine import Step, Workflow, execute
+from agent_rewind.world import LATENCY_MS, World
 
 KB = {"team.members": [], "http://x/0": "page"}
 

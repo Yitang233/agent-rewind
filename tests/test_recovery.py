@@ -1,9 +1,9 @@
 import copy
 import unittest
 
-from mas_recovery.experiment import clean_reference, compare, make_llm, propagation
-from mas_recovery.faults import FAULTS
-from mas_recovery.recovery import recover
+from agent_rewind.experiment import clean_reference, compare, make_llm, propagation
+from agent_rewind.faults import FAULTS
+from agent_rewind.recovery import recover
 
 
 def rows_by_method(label):

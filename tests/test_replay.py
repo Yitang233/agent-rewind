@@ -5,7 +5,7 @@ import unittest
 
 import numpy as np
 
-from mas_recovery import replay as R
+from agent_rewind import replay as R
 
 ENV = os.path.join(os.path.dirname(__file__), "..", "runs", "env.json")
 
@@ -129,8 +129,8 @@ def small_model():
 @unittest.skipUnless(small_model(), "1.5b model not present")
 class LlamaReplayTest(unittest.TestCase):
     def test_replay_equals_plain_with_grammar(self):
-        from mas_recovery import atoms as A
-        from mas_recovery.llm import LlamaCppLLM
+        from agent_rewind import atoms as A
+        from agent_rewind.llm import LlamaCppLLM
         m = small_model()
         llm = LlamaCppLLM(m["path"], model_sha=m["sha256"], n_ctx=2048, replay="resync")
         inp = lambda size: {"groups": A.groups_to_json([  # noqa: E731

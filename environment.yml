@@ -1,0 +1,12 @@
+# Project environment: `conda env create -f environment.yml`, then `conda activate agent-rewind`.
+# llama-cpp-python is compiled from source with Metal (Apple GPU) support.
+name: agent-rewind
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - pip
+  - pip:
+      - -e ".[llm,plot]"
+variables:
+  CMAKE_ARGS: "-DGGML_METAL=on"

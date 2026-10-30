@@ -3,7 +3,7 @@ import os
 import tempfile
 import unittest
 
-from mas_recovery import bench
+from agent_rewind import bench
 
 CFG = {
     "name": "t", "experiments": [

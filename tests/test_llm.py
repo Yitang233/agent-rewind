@@ -3,7 +3,7 @@ import os
 import tempfile
 import unittest
 
-from mas_recovery import atoms as A
+from agent_rewind import atoms as A
 
 ENV = os.path.join(os.path.dirname(__file__), "..", "runs", "env.json")
 
@@ -20,7 +20,7 @@ def small_model():
 class LlamaCppTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        from mas_recovery.llm import LlamaCppLLM
+        from agent_rewind.llm import LlamaCppLLM
         m = small_model()
         cls.dir = tempfile.TemporaryDirectory()
         cls.llm = LlamaCppLLM(m["path"], model_sha=m["sha256"], cache_path=os.path.join(cls.dir.name, "c.sqlite"),
@@ -63,7 +63,7 @@ class LlamaCppTest(unittest.TestCase):
         self.assertGreater(llm.last_stats["cached_prefix"], 100)
 
     def test_no_cache_switch(self):
-        from mas_recovery.llm import LlamaCppLLM
+        from agent_rewind.llm import LlamaCppLLM
         self.assertIsNone(LlamaCppLLM.__init__.__defaults__[0])           # cache_path defaults to off
 
 

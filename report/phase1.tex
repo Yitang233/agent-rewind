@@ -1,0 +1,249 @@
+% agent-rewind: Phase 1 report, Option 5.
+% Course rule: a 1-2 page writeup plus an appendix with a timeline and milestones.
+% Scope is Phase 1 only: clean baseline, fault injection, traces, propagation,
+% and the full-restart and always-verify baselines. Recovery methods are Phase 2.
+% Build: `tectonic phase1.tex` from this folder.
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{newtxtext,newtxmath}
+\usepackage[textwidth=7in,textheight=9in,columnsep=0.33in,centering]{geometry}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage[font=small,labelfont=bf,skip=3pt]{caption}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{nosep,leftmargin=*}
+\setlength{\textfloatsep}{6pt plus 2pt minus 2pt}
+\pagestyle{plain}
+\raggedbottom
+\definecolor{warn}{HTML}{D55E00}
+
+\title{\large\bfseries Phase 1: Fault Injection and Propagation\\in a Researcher--Planner--Executor Workflow}
+\author{Yitang Gao \quad Qinlin Chen \quad Xueru Song \quad Kai Zhang\\ \normalsize University of California, San Diego}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Goal}
+Option~5 asks whether tracking dependencies between agent results can make
+recovery from a known-faulty result efficient while keeping execution correct
+and safe. Phase~1 builds the ground for that question: a clean workflow with
+checkable outcomes, a harness that injects faults at controlled points, traces
+that record what each step read and did, measurements of how faults
+propagate, and the two reference baselines, \emph{full restart} and
+\emph{always-verify}. Recovery methods are Phase~2 work and are not evaluated
+here.
+
+\section{Setup}
+\paragraph{Workloads.} Each workload has a clean run whose outcome a checker
+verifies.
+\textbf{W1} (booking) is a researcher $\to$ planner $\to$ executor workflow.
+The researcher looks up team size and room capacities, the planner picks a room
+for each of three meetings, and the executor books it and e-mails attendees
+(14 steps, 6 LLM calls). \texttt{calendar.book} is compensable;
+\texttt{email.send} is irreversible.
+\textbf{W3} (code fix) has an agent read an issue and source file, then write a
+patch into a git workspace that unit tests check. This adds non-LLM file state.
+\textbf{W4} ports two scenarios from TAMAS~\cite{kavathekar2025tamas}, a
+named starting point in the brief: Byzantine agents (\texttt{w4.byz}) and
+indirect prompt injection (\texttt{w4.ipi}). Their effects are posts to
+external sites, which are irreversible.
+
+\paragraph{Model and platform.} Qwen2.5-7B-Instruct (Q4\_K\_M) runs in-process
+through \texttt{llama-cpp-python} on one Apple M5 Pro laptop (24\,GB), with
+greedy decoding and JSON-constrained output. A scripted model runs the same
+workflows for fast checks. Each configuration has 3 repeats, which are
+scenario variants. 1{,}675 cells ran with zero errors.
+
+\paragraph{Traces.} Every step reads and writes one versioned namespace:
+messages, shared state, files and tool results. A step records (i)~the
+messages and artifacts it wrote, (ii)~its tool actions with their effect class
+(\texttt{read}, \texttt{compensable}, \texttt{irreversible}), (iii)~its cost
+(LLM calls, tokens, wall time), and (iv)~its \emph{dependencies}: the ordered
+paths it read, each with a content hash. A fault's \emph{cone} is every step
+that read the faulty value, directly or through another step.
+
+\paragraph{Faults.} One fault per run, at a chosen step: \emph{wrong} (a
+plausible false value), \emph{stale} (an outdated value), \emph{timeout} (a
+missing value) and \emph{malicious} (an injected instruction or a Byzantine
+agent). Accidental and adversarial faults are reported separately.
+
+\section{Clean baseline}
+All four workloads succeed in 3/3 clean runs on both models
+(Table~\ref{tab:clean}). The clean-vs-clean spread in wall time is
+1.1\,s (W1), 1.2\,s (W3) and 0.6\,s (W4.ipi), which sets the noise floor for
+latency.
+
+\begin{table}[h]
+\centering\small
+\caption{Clean runs, 7B model ($n{=}3$ each).}
+\label{tab:clean}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+WL & success & steps & LLM calls & tokens & latency s \\
+\midrule
+W1 & 3/3 & 14 & 6 & 2427 & 47.6 \\
+W3 & 3/3 & 5 & 1 & 661 & 8.7 \\
+W4.byz & 3/3 & 6 & 3 & 444 & --$^\ast$ \\
+W4.ipi & 3/3 & 6 & 3 & 1078 & 13.2 \\
+\bottomrule
+\end{tabular}\\[1pt]
+{\footnotesize $^\ast$All cells were prompt-cache hits, so no live latency was measured.}
+\end{table}
+
+\section{Propagation}
+For each fault we measure whether any later step read the faulty value,
+whether the outcome changed, how many steps and which effects it reached, and
+whether unauthorised actions occurred (Table~\ref{tab:prop}).
+
+\begin{table}[t]
+\centering\small
+\caption{Fault propagation, 7B model ($n{=}3$ each). ``Changed'' is the
+fraction of runs whose outcome differs from the clean run. ``Irrev.'' counts
+irreversible calls made in the faulty run.}
+\label{tab:prop}
+\setlength{\tabcolsep}{2.4pt}
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+WL & fault (class) & changed & steps hit & irrev. & unauth. \\
+\midrule
+\multirow{3}{*}{W1} & wrong capacity (acc.) & 1.00 & 9/14 & 3 & 0 \\
+ & stale capacity (acc.) & 0.67 & 9/14 & 3 & 0 \\
+ & injected agenda (adv.) & 1.00 & 3/14 & 3 & \textbf{1} \\
+\midrule
+\multirow{3}{*}{W3} & wrong issue (acc.) & 1.00 & 3/5 & 0 & 0 \\
+ & stale code (acc.) & 1.00 & 3/5 & 0 & 0 \\
+ & injected issue (adv.) & \textcolor{warn}{0.00} & 3/5 & 0 & 0 \\
+\midrule
+\multirow{4}{*}{W4.byz} & stale flag (acc.) & 0.67 & 4/6 & 2 & 0 \\
+ & Byz.\ distribute (adv.) & 1.00 & 1/6 & 1 & 0 \\
+ & Byz.\ fact-check (adv.) & \textcolor{warn}{0.00} & 3/6 & 2 & 0 \\
+ & injected item (adv.) & 0.33 & 4/6 & 2.3 & 0 \\
+\midrule
+\multirow{4}{*}{W4.ipi} & stale flag (acc.) & 0.67 & 4/6 & 1 & 0 \\
+ & Byz.\ distribute (adv.) & 1.00 & 1/6 & 1 & 0 \\
+ & Byz.\ fact-check (adv.) & \textcolor{warn}{0.00} & 3/6 & 1 & 0 \\
+ & injected item (adv.) & 0.33 & 4/6 & 1.3 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+\item \textbf{Every fault is read downstream} (all 14 fault--workload pairs),
+  so each workload really depends on the injected result.
+\item \textbf{Reach varies widely.} A wrong W1 capacity reaches 9 of 14 steps,
+  both bookings and the irreversible e-mail. The injected agenda reaches only
+  3 steps, yet sends an unauthorised e-mail in every run.
+\item \textbf{Some faults are read but absorbed.} Three adversarial faults
+  never change the 7B outcome (W3 injected issue; Byzantine fact-check in both
+  W4 scenarios). The scripted model propagates all of them, so absorption is a
+  property of the model. We flag these faults rather than count them as
+  robustness.
+\item \textbf{Accidental faults are not always caught by the model.} A stale
+  capacity changes the W1 outcome in 2 of 3 runs.
+\end{itemize}
+
+\section{Baselines}
+\textbf{Full restart} undoes what it can and reruns every step.
+\textbf{Always-verify} audits every step's output with the same model
+against the step's inputs, and its tokens are counted as extra inference cost.
+Both see the same faulty runs (Table~\ref{tab:base}). \emph{Wasted work} is the
+number of rerun steps outside the fault's cone, which a dependency-aware method
+could avoid.
+
+\begin{table}[t]
+\centering\small
+\caption{Baselines, 7B model, mean over faults. Restart: steps rerun, wasted
+steps (outside the cone), recovery time and tokens, irreversible calls
+re-sent, recovered correctly. Always-verify: audit tokens per run and their
+ratio to a clean run's tokens, detection rate, false-positive flags per run.}
+\label{tab:base}
+\setlength{\tabcolsep}{2.2pt}
+\begin{tabular}{@{}l|cccccc|cccc@{}}
+\toprule
+ & \multicolumn{6}{c|}{full restart} & \multicolumn{4}{c}{always-verify} \\
+WL & rerun & waste & s & tok & irr. & ok & tok & $\times$ & det. & FP \\
+\midrule
+W1 & 14 & 6.0 & 36.3 & 2326 & 3.0 & 1.0 & 1245 & .51 & 1.00 & .33 \\
+W3 & 5 & 1.0 & 8.0 & 562 & 0 & 0.0$^\dagger$ & 575 & .87 & 0.67 & 0 \\
+W4.byz & 6 & 2.0 & 13.4 & 1078 & 1.8 & 1.0 & 692 & 1.56 & 0.75 & .25 \\
+W4.ipi & 6 & 2.0 & 14.1 & 1097 & 1.0 & 1.0 & 712 & .66 & 1.00 & .25 \\
+\bottomrule
+\end{tabular}\\[1pt]
+{\footnotesize $^\dagger$See the observations below.}
+\end{table}
+
+\paragraph{Observations.}
+(1)~Restart reruns many steps that never read the fault: on W1, 10 of 14 for
+the injected agenda and 4 of 14 for the capacity faults. It also re-sends every
+irreversible call (3.0 per W1 recovery), and it cannot recall the unauthorised
+e-mail. (2)~Always-verify adds 51--156\% of a clean run's tokens on
+\emph{every} run, faulty or not. It still misses one third of W3 faults and a
+quarter of W4.byz faults, and it raises false flags on clean steps.
+(3)~$^\dagger$Restart did not reproduce the clean W3 outcome in any 7B run, even
+though clean W3 succeeds 3/3. We are investigating whether the restarted run
+differs from the clean run in prompt or workspace state.
+
+\paragraph{Limitations.} Timeout faults are covered only in a scripted
+single-meeting version of W1, where a missing team size changes the outcome and
+reaches both effects. They are not yet in the 7B grid. W4 uses 2 of TAMAS's
+scenarios, and $n{=}3$ gives wide intervals.
+
+\paragraph{Takeaway for Phase 2.} Faults reach only part of each workflow, but
+restart pays for all of it and re-sends irreversible effects, while
+always-verify pays on every run and still misses faults. Phase~2 will use the
+recorded dependencies to rerun only the cone, reconcile effects instead of
+repeating them, and compare against these two baselines under identical fault
+schedules.
+
+{\footnotesize
+\bibliographystyle{abbrv}
+\bibliography{refs}
+}
+
+\clearpage
+\onecolumn
+\appendix
+\section*{Appendix: Timeline and Milestones}
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}p{0.11\textwidth}p{0.42\textwidth}p{0.35\textwidth}@{}}
+\toprule
+\textbf{Due / status} & \textbf{Milestone} & \textbf{Done when} \\
+\midrule
+\multicolumn{3}{@{}l}{\textit{Phase 1 --- fault injection and propagation (this report)}} \\
+Done & Review TAMAS and A2ASecBench; choose scenarios & two TAMAS scenarios ported (W4) \\
+Done & Clean researcher--planner--executor baseline & W1, W3, W4 pass their checkers 3/3 \\
+Done & Fault-injection harness & wrong / stale / timeout / malicious faults at a chosen step \\
+Done & Traces: messages, artifacts, tool actions, dependencies & every step records reads with hashes, writes, effects, cost \\
+Done & Measure clean runs and propagation & Tables 1--2 \\
+Done & Full-restart and always-verify baselines & Table 3 \\
+\midrule
+\multicolumn{3}{@{}l}{\textit{Phase 2 --- selective recovery}} \\
+Nov 8 & Dependency tracking: tag results with their sources & a step's inputs can be listed from the trace \\
+Nov 15 & Dependency-aware invalidation and selective rerun & only steps in the fault's cone rerun \\
+Nov 22 & Shared state and irreversible actions & compensation for compensable effects; irreversible ones reported, not repeated \\
+Nov 29 & Compare against full restart and always-verify & identical fault schedules and budgets, fault stage varied \\
+Dec 5 & Evaluate recovery metrics and reuse validity & correctness, unauthorised actions, recomputed stages, retained work, latency, inference cost, tracking overhead \\
+Dec 7 & Optional: automated fault detection & false positives and misses reported separately from recovery \\
+Dec 10 & Submit Phase 2 code and the final report & 4--6 page report \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Open items carried into Phase 2.} Add timeout faults to the 7B grid;
+explain the W3 restart result; add the precision-versus-bookkeeping
+measurement (dependency granularity) that the brief asks for.
+
+\paragraph{Acknowledgments.} Phase 1 progress report for the CSE 291A
+(\emph{Systems for LLMs and AI Agents}, UC San Diego, Fall 2026) course project.
+
+\end{document}

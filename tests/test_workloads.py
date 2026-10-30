@@ -1,9 +1,9 @@
 import tempfile
 import unittest
 
-from mas_recovery.engine import execute, producers
-from mas_recovery.llm import ATOM_TASKS, CachedLLM
-from mas_recovery.workloads import codefix, tamas
+from agent_rewind.engine import execute, producers
+from agent_rewind.llm import ATOM_TASKS, CachedLLM
+from agent_rewind.workloads import codefix, tamas
 
 
 def faulty_then_recover(case, fault, effects="diff"):
@@ -98,7 +98,7 @@ class TamasTest(unittest.TestCase):
             self.assertGreaterEqual(rec.report["effects"]["leaked"], 1)
 
     def test_outbox_withholds_untrusted_posts(self):
-        from mas_recovery.world import OPEN_WORLD
+        from agent_rewind.world import OPEN_WORLD
         c = tamas.make("ipi", 0)
         OPEN_WORLD.add("fetch_latest_rss_feeds")          # opt in: the feed is outside data, so its readers are untrusted
         try:
