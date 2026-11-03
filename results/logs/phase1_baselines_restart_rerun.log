@@ -1,0 +1,31 @@
+[bench] phase1_baselines: 112 cells, 56 done, 56 pending
+[bench] 81/112 eta 0.0h last=0.0s
+[bench] 85/112 eta 0.36h last=48.6s
+[bench] 86/112 eta 0.36h last=52.2s
+[bench] 87/112 eta 0.34h last=48.0s
+[bench] 88/112 eta 0.34h last=52.9s
+[bench] 89/112 eta 0.34h last=61.3s
+[bench] 90/112 eta 0.32h last=50.6s
+[bench] 91/112 eta 0.27h last=11.6s
+[bench] 92/112 eta 0.24h last=14.1s
+[bench] 93/112 eta 0.21h last=11.9s
+[bench] 94/112 eta 0.18h last=12.9s
+[bench] 95/112 eta 0.16h last=10.4s
+[bench] 96/112 eta 0.14h last=12.8s
+[bench] 97/112 eta 0.13h last=19.8s
+[bench] 98/112 eta 0.12h last=21.1s
+[bench] 99/112 eta 0.11h last=18.7s
+[bench] 100/112 eta 0.1h last=19.2s
+[bench] 101/112 eta 0.09h last=21.8s
+[bench] 102/112 eta 0.08h last=25.3s
+[bench] 103/112 eta 0.07h last=22.9s
+[bench] 104/112 eta 0.06h last=21.3s
+[bench] 105/112 eta 0.05h last=18.7s
+[bench] 106/112 eta 0.05h last=19.1s
+[bench] 107/112 eta 0.04h last=18.7s
+[bench] 108/112 eta 0.03h last=18.0s
+[bench] 109/112 eta 0.02h last=17.5s
+[bench] 110/112 eta 0.01h last=15.2s
+[bench] 111/112 eta 0.01h last=15.2s
+[bench] 112/112 eta 0.0h last=15.6s
+[bench] finished: 56 new cells, 0 errors, peak_rss_mb 5360

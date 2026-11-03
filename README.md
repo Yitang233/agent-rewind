@@ -360,7 +360,8 @@ agent-rewind/
 │   ├── demo.py         single-workflow demonstration
 │   └── recovery.py, workflow.py, trace.py   compatibility layer from the first prototype
 ├── bench/configs/      experiment grids: phase1, phase1_baselines, full
-├── scripts/            analyze.py, bench_llm.py, replay_check.py, audit_check.py, ...
+├── scripts/            analyze.py, phase1_tables.py, bench_llm.py, replay_check.py, ...
+├── results/            raw cells and logs behind the Phase 1 report tables
 ├── tests/              unit, property, replay-equivalence and audit-cache tests
 ├── report/             main.tex (final report), phase1.tex, refs.bib, figures/
 ├── environment.yml     conda environment (agent-rewind)
@@ -369,7 +370,8 @@ agent-rewind/
 └── LICENSE             MIT license
 ```
 
-Experiment output (`runs/`) is not tracked.
+Experiment output (`runs/`) is not tracked. `results/` holds a snapshot of the cells behind the
+Phase 1 report; `python scripts/phase1_tables.py` recomputes its three tables.
 
 ---
 

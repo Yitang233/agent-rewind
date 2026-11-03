@@ -1,0 +1,18 @@
+{
+ "1.5b": {
+  "file": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+  "sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+  "prefill_tps": 1973.15,
+  "decode_tps": 89.99,
+  "equiv_rate": 1.0,
+  "kv_crop_ok": true
+ },
+ "7b": {
+  "file": "Qwen2.5-7B-Instruct-Q4_K_M.gguf",
+  "sha256": "65b8fcd92af6b4fefa935c625d1ac27ea29dcb6ee14589c55a8f115ceaaa1423",
+  "prefill_tps": 533.84,
+  "decode_tps": 24.12,
+  "equiv_rate": 1.0,
+  "kv_crop_ok": true
+ }
+}

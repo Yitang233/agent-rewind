@@ -1,0 +1,63 @@
+[bench] phase1_baselines: 112 cells, 0 done, 112 pending
+[bench] 25/112 eta 0.0h last=0.0s
+[bench] 50/112 eta 0.0h last=0.0s
+[bench] 57/112 eta 1.43h last=93.7s
+[bench] 58/112 eta 1.01h last=40.8s
+[bench] 59/112 eta 0.92h last=53.0s
+[bench] 60/112 eta 0.82h last=40.4s
+[bench] 61/112 eta 0.92h last=96.8s
+[bench] 62/112 eta 0.82h last=31.3s
+[bench] 63/112 eta 0.79h last=50.2s
+[bench] 64/112 eta 0.73h last=31.3s
+[bench] 65/112 eta 0.75h last=81.1s
+[bench] 66/112 eta 0.68h last=16.8s
+[bench] 67/112 eta 0.66h last=49.7s
+[bench] 68/112 eta 0.61h last=16.7s
+[bench] 69/112 eta 0.57h last=21.6s
+[bench] 70/112 eta 0.53h last=10.8s
+[bench] 71/112 eta 0.49h last=12.9s
+[bench] 72/112 eta 0.46h last=11.5s
+[bench] 73/112 eta 0.43h last=19.9s
+[bench] 74/112 eta 0.4h last=9.6s
+[bench] 75/112 eta 0.38h last=12.9s
+[bench] 76/112 eta 0.36h last=10.8s
+[bench] 77/112 eta 0.34h last=17.9s
+[bench] 78/112 eta 0.32h last=9.1s
+[bench] 79/112 eta 0.3h last=11.8s
+[bench] 80/112 eta 0.28h last=9.6s
+[bench] 81/112 eta 0.27h last=31.5s
+[bench] 82/112 eta 0.26h last=10.8s
+[bench] 83/112 eta 0.24h last=18.3s
+[bench] 84/112 eta 0.23h last=10.9s
+[bench] 85/112 eta 0.22h last=27.2s
+[bench] 86/112 eta 0.21h last=10.8s
+[bench] 87/112 eta 0.2h last=16.6s
+[bench] 88/112 eta 0.19h last=10.7s
+[bench] 89/112 eta 0.18h last=23.3s
+[bench] 90/112 eta 0.17h last=4.8s
+[bench] 91/112 eta 0.16h last=16.0s
+[bench] 92/112 eta 0.15h last=4.8s
+[bench] 93/112 eta 0.14h last=32.3s
+[bench] 94/112 eta 0.13h last=16.0s
+[bench] 95/112 eta 0.12h last=17.7s
+[bench] 96/112 eta 0.11h last=16.1s
+[bench] 97/112 eta 0.11h last=19.4s
+[bench] 98/112 eta 0.1h last=11.0s
+[bench] 99/112 eta 0.09h last=15.6s
+[bench] 100/112 eta 0.08h last=10.8s
+[bench] 101/112 eta 0.07h last=15.2s
+[bench] 102/112 eta 0.07h last=10.8s
+[bench] 103/112 eta 0.06h last=15.2s
+[bench] 104/112 eta 0.05h last=10.8s
+[bench] 105/112 eta 0.05h last=15.2s
+[bench] 106/112 eta 0.04h last=4.0s
+[bench] 107/112 eta 0.03h last=15.3s
+[bench] 108/112 eta 0.03h last=4.0s
+[bench] 109/112 eta 0.02h last=19.9s
+[bench] 110/112 eta 0.01h last=15.2s
+[bench] 111/112 eta 0.01h last=15.6s
+[bench] 112/112 eta 0.0h last=15.2s
+[bench] finished: 112 new cells, 0 errors, peak_rss_mb 5435
+real 1244.89
+user 229.57
+sys 84.31

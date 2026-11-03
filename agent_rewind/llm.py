@@ -153,11 +153,14 @@ class CachedLLM:
         if hasattr(self, "cur_step"):
             self.inner.cur_step = self.cur_step
         out = self.inner.complete(role, task, inputs)
-        used = getattr(self.inner, "last_tokens", 0) or len(json.dumps([inputs, out])) // 4
+        st = getattr(self.inner, "last_stats", None) or {}
+        used = getattr(self.inner, "last_tokens", 0)
+        if not used and st.get("cached_call"):         # a disk-cache hit costs what the original call cost
+            used = st.get("orig_prefill", 0) + st.get("orig_decoded", 0)
+        used = used or len(json.dumps([inputs, out])) // 4     # backends without token counts (scripted)
         self.cache[key] = out
         self.last_atoms = list(getattr(self.inner, "last_atoms", []) or [])
         self.atoms[key] = self.last_atoms
-        st = getattr(self.inner, "last_stats", None) or {}
         self.last_conf = getattr(self.inner, "last_conf", None) or {}
         self.last_nominal = (st.get("orig_prefill", st.get("prefill", 0)) + st.get("orig_decoded", st.get("decoded", 0))) or used
         self.extra[key] = (self.last_conf, self.last_nominal)

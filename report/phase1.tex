@@ -60,6 +60,8 @@ greedy decoding and JSON-constrained output. A scripted model runs the same
 workflows for fast checks. The propagation grid (E1) has 3 repeats per
 configuration, which are scenario variants; the scripted W2 grids have 5, and
 each baseline cell has 1. 1{,}675 cells ran with zero errors.
+A rerun of both grids on an Apple M5 reproduces every count in Tables 1--3;
+its raw cells and logs are in \texttt{results/} of the repository.
 
 \paragraph{Traces.} Every step reads and writes one versioned namespace:
 messages, shared state and files. A step records (i)~the
@@ -91,11 +93,11 @@ WL & success & steps & LLM calls & tokens & latency s \\
 \midrule
 W1 & 3/3 & 14 & 6 & 2427 & 47.6 \\
 W3 & 3/3 & 5 & 1 & 661 & 8.7 \\
-W4.byz & 3/3 & 6 & 3 & 444 & --$^\ast$ \\
+W4.byz & 3/3 & 6 & 3 & 1070$^\ast$ & --$^\ast$ \\
 W4.ipi & 3/3 & 6 & 3 & 1078 & 13.2 \\
 \bottomrule
 \end{tabular}\\[1pt]
-{\footnotesize $^\ast$All cells were prompt-cache hits, so no live latency was measured.}
+{\footnotesize $^\ast$The grid's cells were prompt-cache hits, so no live latency was measured; tokens come from three separate uncached runs.}
 \end{table}
 
 \section{Propagation}
@@ -175,7 +177,7 @@ WL & rerun & waste & s & tok & irr. & ok & tok & $\times$ & det. & FP \\
 \midrule
 W1 & 14 & 6.0 & 36.3 & 2326 & 3.0 & 1.0 & 1245 & .51 & 1.00 & .33 \\
 W3$^\dagger$ & 5 & 1.0 & 10.6 & 592 & 0 & 1.0 & 575 & .87 & 0.67 & 0 \\
-W4.byz & 6 & 2.0 & 13.4 & 1078 & 1.8 & 1.0 & 692 & 1.56 & 0.75 & .25 \\
+W4.byz & 6 & 2.0 & 13.4 & 1078 & 1.8 & 1.0 & 692 & .65 & 0.75 & .25 \\
 W4.ipi & 6 & 2.0 & 14.1 & 1097 & 1.0 & 1.0 & 712 & .66 & 1.00 & .25 \\
 \bottomrule
 \end{tabular}\\[1pt]
@@ -186,7 +188,7 @@ W4.ipi & 6 & 2.0 & 14.1 & 1097 & 1.0 & 1.0 & 712 & .66 & 1.00 & .25 \\
 (1)~Restart reruns many steps that never read the fault: on W1, 10 of 14 for
 the injected agenda and 4 of 14 for the capacity faults. It also re-sends every
 irreversible call (3.0 per W1 recovery), and it cannot recall the unauthorised
-e-mail. (2)~Always-verify adds 51--156\% of a clean run's tokens on
+e-mail. (2)~Always-verify adds 51--87\% of a clean run's tokens on
 \emph{every} run, faulty or not. It still misses one third of W3 faults and a
 quarter of W4.byz faults, and it raises false flags on clean steps.
 (3)~$^\dagger$Our first W3 restart cells failed in every 7B run, although

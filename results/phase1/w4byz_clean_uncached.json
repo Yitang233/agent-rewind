@@ -1,0 +1,23 @@
+{
+ "note": "W4.byz clean runs with the prompt cache off (Table 1 tokens). 7B Q4_K_M, Apple M5, 2026-11-02.",
+ "runs": [
+  {
+   "repeat": 0,
+   "ok": true,
+   "tokens": 1084,
+   "wall_s": 18.4
+  },
+  {
+   "repeat": 1,
+   "ok": true,
+   "tokens": 1060,
+   "wall_s": 17.4
+  },
+  {
+   "repeat": 2,
+   "ok": true,
+   "tokens": 1065,
+   "wall_s": 18.3
+  }
+ ]
+}
