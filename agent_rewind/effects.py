@@ -123,7 +123,7 @@ class Ledger:
             old = ctx.prior.get(key)
             if old is not None:
                 ctx.prior_used.add(key)
-                new = replace(old, held=False)
+                new = replace(old, held=False, untrusted=ctx.tainted)
                 ctx.intents.append(new)
                 ctx.local[key] = new
                 self.stats["retained"] += 1
@@ -175,6 +175,16 @@ class Ledger:
                 self.redone.append(it.tool)
             elif act == "withdraw":
                 self.stats["withdrawn"] += 1
+
+    def undo(self, records) -> None:
+        """Compensate, newest first, every compensable effect of `records` before anything reruns.
+        Without it a naive restart's early steps (a researcher reading files) would see the effects
+        of the run being replaced, since each step's own effects are only settled when it reruns."""
+        for rec in reversed(list(records)):
+            for it in reversed(rec.intents):
+                if it.cls == "compensable" and not it.undone and not it.withdrawn:
+                    it.undone = self.world.compensate(it.tool, it.result)
+                    self.stats["compensated"] += 1
 
     def replay(self, old) -> list[Intent]:
         self.set_label([p for p, _ in old.writes], old.untrusted)

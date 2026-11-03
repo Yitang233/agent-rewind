@@ -44,6 +44,17 @@ class EngineBasics(unittest.TestCase):
         wf2 = Workflow([Step("a", "x", lambda c: c.write("/kv/a", 2))])
         self.assertEqual(execute(wf2, World({}), llm(), prior=clean).report["rerun"], ["a"])
 
+    def test_reading_an_ancestor_of_an_own_write_is_a_dependency(self):
+        def s(c):
+            c.write("/kv/cfg/count", 0)
+            c.write("/kv/out", c.read("/kv/cfg")["x"])        # the parent also holds another step's x
+        wf, llm, _, faulty, w = setup([Step("up", "x", lambda c: c.write("/kv/cfg/x", 1)), Step("s", "x", s)],
+                                      {("up", "/kv/cfg/x"): 99})
+        self.assertEqual(faulty.value("/kv/out"), 99)
+        rec = recover(wf, llm, faulty, w, "up", "selective")
+        self.assertEqual(rec.value("/kv/out"), 1)
+        self.assertIn("s", rec.report["rerun"])
+
     def test_restart_and_rollback(self):
         steps = [Step(n, "x", (lambda n: lambda c: c.write(f"/kv/{n}", n))(n)) for n in "abc"]
         wf, llm, clean, _, w = setup(steps)

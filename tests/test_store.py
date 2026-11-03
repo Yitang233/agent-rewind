@@ -23,6 +23,11 @@ class StoreTest(unittest.TestCase):
         self.s.write("main", "/msg/p/plan/agenda/items/2", "z")
         self.assertEqual(self.s.get("main", "/msg/p/plan/agenda/items"), ["a", "b", "z"])
 
+    def test_array_and_object_with_same_children_differ(self):
+        self.s.write("main", "/kv/a", ["A"])
+        self.s.write("main", "/kv/o", {"0": "A"})
+        self.assertNotEqual(self.s.hash("main", "/kv/a"), self.s.hash("main", "/kv/o"))
+
     def test_merkle_ancestors_change_siblings_do_not(self):
         self.s.write("main", "/msg/p/plan", {"room": "B", "agenda": "x"})
         root, plan, agenda = (self.s.hash("main", p) for p in ("/", "/msg/p/plan", "/msg/p/plan/agenda"))

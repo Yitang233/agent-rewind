@@ -154,6 +154,15 @@ class Trust(unittest.TestCase):
         self.assertEqual(len(w1.outbox), 1)                         # the step rewrites the path: trusted again
         self.assertEqual(r.report["held"], [])
 
+    def test_retained_intent_takes_the_new_label(self):
+        """A recovery that verifies the source releases an intent the faulty run held."""
+        w = World(KB)
+        prior = execute(self.wf(), w, None, effects="diff+outbox")
+        self.assertEqual(prior.report["held"], ["email.send"])
+        rec = execute(self.wf(), w, None, prior=prior, dirty={"tainted"}, verified_paths={"/msg/web"})
+        self.assertEqual(rec.report["held"], [])
+        self.assertIn("page", [m["body"] for m in w.outbox])
+
     def test_no_hold_without_outbox(self):
         w = World(KB)
         execute(self.wf(), w, None, effects="diff")

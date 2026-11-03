@@ -195,7 +195,7 @@ class Models:
     """Loads one model at a time; `llm_for(model)` returns the inner backend for a cell."""
 
     def __init__(self, out_dir: str, dry: bool) -> None:
-        self.out_dir, self.name, self.inner, self.checker = out_dir, None, None, None
+        self.out_dir, self.name, self.inner, self.checker, self.db = out_dir, None, None, None, None
 
     def load(self, name: str):
         if self.name == name:
@@ -212,8 +212,9 @@ class Models:
         if busy:
             raise RuntimeError("another model process is running: " + busy[0])
         from .llm import LlamaCppLLM
-        self.inner = LlamaCppLLM(env["path"], model_sha=env["sha256"], n_ctx=4096,
+        self.inner = LlamaCppLLM(env["path"], model_sha=env.get("sha256"), n_ctx=4096,
                                  cache_path=os.path.join(self.out_dir, f"cache_{name}.sqlite"))
+        self.db = self.inner.db
         self.name = name
 
     def free(self) -> None:
@@ -222,8 +223,10 @@ class Models:
         self.name = None
 
     def reset(self) -> None:
-        """After a failed cell: drop the KV cache so the next cell starts from a clean context."""
+        """After a failed cell: drop the KV cache so the next cell starts from a clean context, and
+        reattach the call cache that run_cell may have detached for a live decode."""
         if self.inner is not None:
+            self.inner.db = self.db
             self.inner.llm.reset()
             self.inner.replay, self.inner.drafts, self.inner.history = "off", {}, {}
 

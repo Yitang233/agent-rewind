@@ -135,7 +135,7 @@ class View:
         if path in self.leaves:
             h = digest("L" + canon(self.leaves[path]))
         elif self.kids.get(path):
-            h = digest("N" + "|".join(f"{n}:{self.hash(self._child(path, n))}" for n in sorted(self.kids[path])))
+            h = digest(("A" if self.kind.get(path) == "a" else "N") + "|".join(f"{n}:{self.hash(self._child(path, n))}" for n in sorted(self.kids[path])))
         else:
             return BOT
         self._h[path] = h

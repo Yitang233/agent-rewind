@@ -25,7 +25,7 @@ from typing import Callable
 
 from . import cutoff as _cutoff
 from .effects import Intent, Ledger, POLICIES as EFFECT_POLICIES
-from .store import BOT, Store, canon, cut, digest, overlaps
+from .store import BOT, Store, canon, cut, digest, overlaps, split
 from .world import World
 
 POLICIES = ("restart", "rollback", "selective", "selective-d2")
@@ -130,7 +130,9 @@ class StepContext:
 
     def read(self, path: str, default=None):
         t0 = time.perf_counter_ns() if self.meter else 0
-        if not any(overlaps(path, w) for w in self.writes):       # own output is not a dependency
+        # Own output is not a dependency. An ancestor of an own write still holds what other steps
+        # wrote, so it is recorded (its hash includes the own write, which can only over-invalidate).
+        if not any(split(path)[:len(split(w))] == split(w) for w in self.writes):
             c = cut(path, self.depth)
             h = self.cutoff.hash(self.store, self.branch, c)
             if all(c != rc for rc, _ in self.reads):
@@ -282,6 +284,8 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
     elif policy == "rollback" and dirty:
         first = min(i for i, n in enumerate(names) if n in dirty)
         dirty = set(names[first:])
+    if prior is not None and effects == "naive" and policy in ("restart", "rollback"):
+        ledger.undo(r for r in prior.records if r.step in dirty)   # undo first, then redo
 
     def audited(rec: StepRecord) -> None:
         if audit is not None:

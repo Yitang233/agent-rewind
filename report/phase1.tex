@@ -57,11 +57,12 @@ external sites, which are irreversible.
 \paragraph{Model and platform.} Qwen2.5-7B-Instruct (Q4\_K\_M) runs in-process
 through \texttt{llama-cpp-python} on one Apple M5 Pro laptop (24\,GB), with
 greedy decoding and JSON-constrained output. A scripted model runs the same
-workflows for fast checks. Each configuration has 3 repeats, which are
-scenario variants. 1{,}675 cells ran with zero errors.
+workflows for fast checks. The propagation grid (E1) has 3 repeats per
+configuration, which are scenario variants; the scripted W2 grids have 5, and
+each baseline cell has 1. 1{,}675 cells ran with zero errors.
 
 \paragraph{Traces.} Every step reads and writes one versioned namespace:
-messages, shared state, files and tool results. A step records (i)~the
+messages, shared state and files. A step records (i)~the
 messages and artifacts it wrote, (ii)~its tool actions with their effect class
 (\texttt{read}, \texttt{compensable}, \texttt{irreversible}), (iii)~its cost
 (LLM calls, tokens, wall time), and (iv)~its \emph{dependencies}: the ordered
@@ -162,7 +163,9 @@ could avoid.
 \caption{Baselines, 7B model, mean over faults. Restart: steps rerun, wasted
 steps (outside the cone), recovery time and tokens, irreversible calls
 re-sent, recovered correctly. Always-verify: audit tokens per run and their
-ratio to a clean run's tokens, detection rate, false-positive flags per run.}
+ratio to a clean run's tokens, detection rate (a faulty run counts as
+detected when the audit flags any step in the fault's cone), false-positive
+flags per run.}
 \label{tab:base}
 \setlength{\tabcolsep}{2.2pt}
 \begin{tabular}{@{}l|cccccc|cccc@{}}
@@ -171,12 +174,12 @@ ratio to a clean run's tokens, detection rate, false-positive flags per run.}
 WL & rerun & waste & s & tok & irr. & ok & tok & $\times$ & det. & FP \\
 \midrule
 W1 & 14 & 6.0 & 36.3 & 2326 & 3.0 & 1.0 & 1245 & .51 & 1.00 & .33 \\
-W3 & 5 & 1.0 & 8.0 & 562 & 0 & 0.0$^\dagger$ & 575 & .87 & 0.67 & 0 \\
+W3$^\dagger$ & 5 & 1.0 & 10.6 & 592 & 0 & 1.0 & 575 & .87 & 0.67 & 0 \\
 W4.byz & 6 & 2.0 & 13.4 & 1078 & 1.8 & 1.0 & 692 & 1.56 & 0.75 & .25 \\
 W4.ipi & 6 & 2.0 & 14.1 & 1097 & 1.0 & 1.0 & 712 & .66 & 1.00 & .25 \\
 \bottomrule
 \end{tabular}\\[1pt]
-{\footnotesize $^\dagger$See the observations below.}
+{\footnotesize $^\dagger$Restart rerun after the fix in observation (3), on an Apple M5.}
 \end{table}
 
 \paragraph{Observations.}
@@ -186,9 +189,15 @@ irreversible call (3.0 per W1 recovery), and it cannot recall the unauthorised
 e-mail. (2)~Always-verify adds 51--156\% of a clean run's tokens on
 \emph{every} run, faulty or not. It still misses one third of W3 faults and a
 quarter of W4.byz faults, and it raises false flags on clean steps.
-(3)~$^\dagger$Restart did not reproduce the clean W3 outcome in any 7B run, even
-though clean W3 succeeds 3/3. We are investigating whether the restarted run
-differs from the clean run in prompt or workspace state.
+(3)~$^\dagger$Our first W3 restart cells failed in every 7B run, although
+clean W3 succeeds 3/3. The cause was in our harness, not the model: restart
+undid each step's old effects only when that step reran, so the rerun
+researcher read \texttt{cart.py} as the faulty run had left it. Where the
+faulty run had already patched the file, the planner saw fixed code and
+``fixed'' it back. The scripted model leaves correct code alone, which hid the
+bug. Restart now undoes every compensable effect, newest first, before it
+reruns anything, and all three W3 cells recover. The same ordering problem can
+affect any method that rereads tool state, which Phase~2 has to handle.
 
 \paragraph{Limitations.} Timeout faults are covered only in a scripted
 single-meeting version of W1, where a missing team size changes the outcome and
@@ -240,7 +249,8 @@ Dec 10 & Submit Phase 2 code and the final report & 4--6 page report \\
 \end{center}
 
 \paragraph{Open items carried into Phase 2.} Add timeout faults to the 7B grid;
-explain the W3 restart result; add the precision-versus-bookkeeping
+make reruns that reread tool state see the world as it was before the fault,
+not as the faulty run left it; add the precision-versus-bookkeeping
 measurement (dependency granularity) that the brief asks for.
 
 \paragraph{Acknowledgments.} Phase 1 progress report for the CSE 291A

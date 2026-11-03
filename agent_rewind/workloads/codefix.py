@@ -212,7 +212,9 @@ class CodeWorld(World):
 
     def run_tests(self) -> dict:
         try:
-            p = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", ".", "-p", "test_*.py"],
+            # -B: no __pycache__. A one-character fix keeps cart.py's size, and a .pyc from a test run
+            # in the same second would pass Python's mtime+size check and run the old code.
+            p = subprocess.run([sys.executable, "-B", "-m", "unittest", "discover", "-s", ".", "-p", "test_*.py"],
                                cwd=self.dir, capture_output=True, text=True, timeout=30)
             return {"passed": p.returncode == 0, "tail": (p.stderr or p.stdout)[-160:]}
         except subprocess.TimeoutExpired:

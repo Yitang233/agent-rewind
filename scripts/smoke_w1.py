@@ -31,6 +31,7 @@ def main():
     ap.add_argument("--out", default=os.path.join(ROOT, "runs/S3/clean.json"))
     a = ap.parse_args()
     env = json.load(open(os.path.join(ROOT, "runs/env.json")))["models"]
+    os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     res = json.load(open(a.out)) if os.path.exists(a.out) else {"cells": {}}
     raw = open(a.out.replace(".json", ".outputs.jsonl"), "a")
     for name in a.models:

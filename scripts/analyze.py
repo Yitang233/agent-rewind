@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """S9 analysis: runs/ cell files -> runs/figures/*.png, tables, analysis.json.
 
-Reads only cell files (runs/phase1/cells.jsonl, runs/phase1/baselines/cells.jsonl,
+Reads only cell files (runs/phase1/cells.jsonl, runs/phase1_baselines/cells.jsonl,
 runs/full/cells.jsonl). Mean +- sd is taken over the cells named in each caption
 (repeats, and the other factors pooled where stated). Run inside the project env (conda activate agent-rewind):
     python scripts/analyze.py
@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs"
 OUT = RUNS / "figures"
 P1 = RUNS / "phase1" / "cells.jsonl"
-P1B = RUNS / "phase1" / "baselines" / "cells.jsonl"
+P1B = RUNS / "phase1_baselines" / "cells.jsonl"  # bench writes runs/<config name>/
 FULL = RUNS / "full" / "cells.jsonl"
 
 PAL = {"a": "#0072B2", "b": "#D55E00", "c": "#009E73", "d": "#CC79A7", "e": "#E69F00", "k": "#444444"}
@@ -34,7 +34,10 @@ RNG = random.Random(291)
 
 
 def load(p):
-    return [json.loads(l) for l in open(p)] if p.exists() else []
+    if not p.exists():
+        print(f"warning: {p.relative_to(ROOT)} not found; figures and tables that need it will be empty")
+        return []
+    return [json.loads(l) for l in open(p)]
 
 
 def ms(v):
@@ -71,15 +74,15 @@ S = lambda k: (lambda r: r["spec"][k])          # noqa: E731
 FL = lambda k: (lambda r: r["spec"]["flags"][k])  # noqa: E731
 
 
-def save(fig, name):
+def save(fig, name, rect=None):
     OUT.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout()
+    fig.tight_layout(rect=rect)
     fig.savefig(OUT / name, dpi=140)
     plt.close(fig)
     return f"runs/figures/{name}"
 
 
-A = {"sources": {"phase1": "runs/phase1/cells.jsonl", "baselines": "runs/phase1/baselines/cells.jsonl",
+A = {"sources": {"phase1": "runs/phase1/cells.jsonl", "baselines": "runs/phase1_baselines/cells.jsonl",
                  "full": "runs/full/cells.jsonl"}}
 
 # ---------------------------------------------------------------- Figure 1 (E2) and P1 check
@@ -89,7 +92,7 @@ def fig1(p1):
     E2 = [r for r in p1 if r["spec"]["exp"] == "E2"]
     meths = ["restart", "rollback", "selective", "selective-d2"]
     col = {"restart": PAL["k"], "rollback": PAL["e"], "selective": PAL["a"], "selective-d2": PAL["c"]}
-    fig, ax = plt.subplots(2, 3, figsize=(12, 6.5), sharey=True)
+    fig, ax = plt.subplots(2, 3, figsize=(12, 6.5), sharex=True, sharey=True)
     out = {}
     for row, (fac, vals) in enumerate([("fan_in", [1, 2, 3]), ("shared_keys", [0, 3, 6])]):
         for j, v in enumerate(vals):
@@ -104,7 +107,8 @@ def fig1(p1):
                     mm = ms(x)
                     mu.append(mm[0])
                     sd.append(mm[1])
-                a.errorbar(pos, mu, yerr=sd, marker="o", ms=3, capsize=2, color=col[m], label=m)
+                a.errorbar(pos, mu, yerr=sd, marker="o", ms=3.5, lw=1.6, capsize=2, elinewidth=0.8,
+                           color=col[m], label=m)
                 out[f"{fac}={v}/{m}"] = dict(zip(map(str, pos), [round(x, 2) for x in mu]))
             for key, ls, lab in [("cone", ":", "cone(f)"), ("suffix", "--", "time-order suffix")]:
                 mu = []
@@ -119,15 +123,21 @@ def fig1(p1):
                             steps = r["faulty"]["steps"]
                             xs.append(len(steps) - steps.index(r["fault_at"][0]))
                     mu.append(st.fmean(xs))
-                a.plot(pos, mu, ls=ls, color="#888", label=lab)
-            a.set_title(f"{fac} = {v}")
-            a.set_xlabel("fault position (fraction of DAG)")
+                a.plot(pos, mu, ls=ls, lw=1.4, color="#888", label=lab)
+            a.set_title(f"{fac.replace('_', ' ')} = {v}", fontsize=11)
+            a.grid(True, color="#e6e6e6", lw=0.6)
+            a.set_axisbelow(True)
+            if row == 1:
+                a.set_xlabel("fault position (fraction of DAG)")
             if j == 0:
                 a.set_ylabel("steps rerun (of 24)")
-    ax[0][0].legend(fontsize=7)
-    fig.suptitle("Figure 1 (E2, W2 scripted): steps rerun vs fault position; mean ± sd over 5 repeats, "
-                 "other factor pooled; cone(f) includes origin")
-    path = save(fig, "fig1_cone_vs_suffix.png")
+    # One legend for all panels, above the grid, so no curve is covered.
+    # Mean ± sd over 5 repeats, the other factor pooled; cone(f) includes the faulty step.
+    hl = dict(zip(*reversed(ax[0][0].get_legend_handles_labels())))
+    labels = meths + ["cone(f)", "time-order suffix"]
+    handles = [hl[k] for k in labels]
+    fig.legend(handles, labels, loc="upper center", ncol=len(labels), frameon=False, fontsize=10)
+    path = save(fig, "fig1_cone_vs_suffix.png", rect=(0, 0, 1, 0.94))
 
     # P1 check on method=selective, exact cutoff, field depth
     sel = [r for r in E2 if r["spec"]["label"] == "selective"]
@@ -156,7 +166,7 @@ def fig1(p1):
     for m in meths:
         x = [r["recovery"]["n_rerun"] for r in E2 if r["spec"]["label"] == m]
         red[m] = ms(x)[:2]
-    ratio = [r["recovery"]["n_rerun"] / len(r["propagation"]["cone"] or [0]) if r["propagation"]["cone"] else None
+    ratio = [r["recovery"]["n_rerun"] / (len(r["propagation"]["cone"]) + 1) if r["propagation"]["cone"] else None
              for r in sel]
     A["fig1"] = {"path": path, "cells_selective": len(sel), "rerun_not_subset_of_cone": viol,
                  "of_which_steps_not_in_faulty_run": ctl, "of_which_steps_that_ran_in_faulty_run": genuine, "genuine_by_kind[n,viol]": dict(brk),
@@ -307,10 +317,11 @@ def fig4(full):
             ax[r_][j].set_xticks([1, 4.6], ["free CoT", "atoms"])
             ax[r_][j].axhline(1, color="#aaa", lw=0.8)
             ax[r_][j].set_title(w)
-        ax[0][j].set_ylabel("decoded tokens / plain rerun")
-        ax[1][j].set_ylabel("recovery LLM wall / plain rerun")
+    ax[0][0].set_ylabel("decoded tokens / plain rerun")
+    ax[1][0].set_ylabel("recovery LLM wall / plain rerun")
     from matplotlib.patches import Patch
-    ax[0][0].legend([Patch(color=col[a]) for a in arms], arms, fontsize=8)
+    ax[0][0].legend([Patch(color=col[a]) for a in arms] + [Patch(facecolor="#bbb", hatch="//", edgecolor="white")],
+                    arms + ["atoms (hatched)"], fontsize=8)
     fig.suptitle("Figure 4 (E5, 7B): M1 replay vs step-level recomputation (off); paired per fault × repeat, "
                  "mean ± sd; hatched = atoms")
     A["fig4"] = {"path": save(fig, "fig4_replay.png"), "points": res, "equality_from_e5": ident}
@@ -589,14 +600,20 @@ def main():
     p1, p1b, full = load(P1), load(P1B), load(FULL)
     print(f"cells: phase1={len(p1)} baselines={len(p1b)} full={len(full)}")
     OUT.mkdir(parents=True, exist_ok=True)
-    fig1(p1)
-    fig2(p1)
-    fig3(p1)
-    f4 = fig4(full)
-    fig5(full, f4)
-    table1(full, p1)
-    table2(full)
-    anomalies(p1, p1b, full)
+    # Each step needs its source grid; skip it rather than crash on a partial runs/.
+    if p1:
+        fig1(p1)
+        fig2(p1)
+        fig3(p1)
+    if full:
+        f4 = fig4(full)
+        fig5(full, f4)
+        table2(full)
+    if full and p1:
+        table1(full, p1)
+        anomalies(p1, p1b, full)
+    if not (p1 and full):
+        print("skipped figures/tables whose grid is missing; analysis.json is partial")
     (OUT / "analysis.json").write_text(json.dumps(A, indent=1, default=lambda o: None if (isinstance(o, float) and math.isinf(o)) else str(o)))
     print("wrote", OUT)
 

@@ -14,18 +14,33 @@ COLUMNS = ["method", "correct", "values_match", "rerun", "reused", "llm_calls", 
            "irreversible_redone", "unauthorized", "latency_ms"]
 
 
+LEGEND = """columns: correct = final outcome matches the clean run; values_match = every namespace value does;
+         rerun / reused = steps; irreversible_redone = irreversible calls made again by recovery;
+         unauthorized = actions the clean run never takes. always-verify is a fresh run that audits
+         every step: rerun counts the steps it flagged and redid, tokens cover the whole run."""
+
+
 def table(rows: list[dict]) -> str:
+    """Method left-aligned, numbers right-aligned, no trailing blanks."""
     widths = {c: max(len(c), *(len(str(r[c])) for r in rows)) for c in COLUMNS}
-    line = lambda r: "  ".join(str(r[c]).ljust(widths[c]) for c in COLUMNS)
+
+    def cell(c, v):
+        return str(v).ljust(widths[c]) if c == "method" else str(v).rjust(widths[c])
+    line = lambda r: "  ".join(cell(c, r[c]) for c in COLUMNS).rstrip()
     return "\n".join([line({c: c for c in COLUMNS})] + [line(r) for r in rows])
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--fault", default="all", choices=["all", *FAULTS])
-    ap.add_argument("--llm", default="scripted", help="scripted, or ollama:<model>")
-    ap.add_argument("--verify-miss-rate", type=float, default=0.0)
-    ap.add_argument("--out", default="runs")
+    ap = argparse.ArgumentParser(
+        prog="python -m agent_rewind.demo",
+        description="Inject one fault into the W1 booking workflow (single meeting), show how it "
+                    "propagates, and compare every recovery policy on the same faulty run.")
+    ap.add_argument("--fault", default="all", choices=["all", *FAULTS], help="fault to inject (default: all)")
+    ap.add_argument("--llm", default="scripted",
+                    help="scripted (default, deterministic, about 1 s) or ollama:<model> for a local Ollama model")
+    ap.add_argument("--verify-miss-rate", type=float, default=0.0,
+                    help="probability that the always-verify audit misses a faulty step (default: 0)")
+    ap.add_argument("--out", default="runs", help="folder for traces and results.json (default: runs)")
     args = ap.parse_args()
 
     backend = None
@@ -38,6 +53,7 @@ def main() -> None:
     clean["trace"].dump(out / "clean.jsonl")
     print(f"clean run: outcome={clean['outcome']['rooms']} tokens={clean['tokens']}\n")
 
+    print(LEGEND + "\n")
     labels = FAULTS if args.fault == "all" else [args.fault]
     results = []
     for label in labels:
@@ -53,7 +69,7 @@ def main() -> None:
         print(table(rows) + "\n")
         results.append({k: v for k, v in prop.items() if k not in ("trace", "world")} | {"recovery": rows})
     (out / "results.json").write_text(json.dumps(results, indent=2))
-    print(f"traces and results in {out}/")
+    print(f"traces and results in {out.resolve()}/")
 
 
 if __name__ == "__main__":

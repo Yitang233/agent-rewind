@@ -40,6 +40,25 @@ class CodefixTest(unittest.TestCase):
                 finally:
                     c.close()
 
+    def test_naive_restart_undoes_before_rereading(self):
+        """The faulty run edits test_cart.py; a restart's researcher must read the seeded file,
+        not the edited one (compensation used to wait until the executor step reran)."""
+        for policy in ("restart", "rollback"):
+            c = codefix.make(0)
+            try:
+                f = c.faults["inject_issue"]
+                faulty = execute(c.workflow, c.world, CachedLLM(c.scripted()),
+                                 overrides={(f.step, c.workflow.path(f.name)): f.value})
+                self.assertIn(codefix.TEST_FILE, c.world.touched())
+                rec = execute(c.workflow, c.world, CachedLLM(c.scripted()), prior=faulty,
+                              dirty=producers(faulty, {c.workflow.path(f.name)}), policy=policy)
+                seen = rec.values()
+                lines = [seen[f"{codefix.TEST_PATH}/{i}"] for i in range(len(codefix.listing(codefix.TESTS)))]
+                self.assertEqual(lines, codefix.listing(codefix.TESTS), policy)
+                self.assertTrue(c.check(c.world), policy)
+            finally:
+                c.close()
+
     def test_compensation_checks_out_and_keeps_other_edits(self):
         c = codefix.make(0)
         w = c.world

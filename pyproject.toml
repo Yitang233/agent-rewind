@@ -20,7 +20,7 @@ dependencies = []
 keywords = ["multi-agent systems", "LLM agents", "fault recovery", "provenance", "incremental computation"]
 
 [project.optional-dependencies]
-llm = ["llama-cpp-python==0.3.36", "huggingface_hub"]
+llm = ["llama-cpp-python==0.3.36", "huggingface_hub", "numpy"]
 audit = ["transformers", "torch"]
 plot = ["matplotlib"]
 
