@@ -79,8 +79,8 @@ agent). Accidental and adversarial faults are reported separately.
 \section{Clean baseline}
 All four workloads succeed in 3/3 clean runs on both models
 (Table~\ref{tab:clean}). The clean-vs-clean spread in wall time is
-1.1\,s (W1), 1.2\,s (W3) and 0.6\,s (W4.ipi), which sets the noise floor for
-latency.
+1.1\,s (W1), 1.2\,s (W3) and 0.6\,s (W4.ipi); these describe variation across
+scenario variants, not a measured latency noise floor.
 
 \begin{table}[h]
 \centering\small
@@ -102,19 +102,19 @@ W4.ipi & 3/3 & 6 & 3 & 1078 & 13.2 \\
 
 \section{Propagation}
 For each fault we measure whether any later step read the faulty value,
-whether the outcome changed, how many steps and which effects it reached, and
+whether the task checker failed, how many steps and which effects it reached, and
 whether unauthorised actions occurred (Table~\ref{tab:prop}).
 
 \begin{table}[t]
 \centering\small
-\caption{Fault propagation, 7B model ($n{=}3$ each). ``Changed'' is the
-fraction of runs whose outcome differs from the clean run. ``Irrev.'' counts
+\caption{Fault propagation, 7B model ($n{=}3$ each). ``Fail'' is the
+fraction of runs that fail the task checker. ``Irrev.'' counts
 irreversible calls made in the faulty run.}
 \label{tab:prop}
 \setlength{\tabcolsep}{2.4pt}
 \begin{tabular}{@{}llcccc@{}}
 \toprule
-WL & fault (class) & changed & steps hit & irrev. & unauth. \\
+WL & fault (class) & fail & steps hit & irrev. & unauth. \\
 \midrule
 \multirow{3}{*}{W1} & wrong capacity (acc.) & 1.00 & 9/14 & 3 & 0 \\
  & stale capacity (acc.) & 0.67 & 9/14 & 3 & 0 \\
@@ -143,19 +143,19 @@ WL & fault (class) & changed & steps hit & irrev. & unauth. \\
 \item \textbf{Reach varies widely.} A wrong W1 capacity reaches 9 of 14 steps,
   both bookings and the irreversible e-mail. The injected agenda reaches only
   3 steps, yet sends an unauthorised e-mail in every run.
-\item \textbf{Some faults are read but absorbed.} Three adversarial faults
-  never change the 7B outcome (W3 injected issue; Byzantine fact-check in both
-  W4 scenarios). The scripted model propagates all of them, so absorption is a
-  property of the model. We flag these faults rather than count them as
-  robustness.
-\item \textbf{Accidental faults are not always caught by the model.} A stale
-  capacity changes the W1 outcome in 2 of 3 runs.
+\item \textbf{Some faults are read without task failure.} Three adversarial
+  faults pass the 7B checker in all tested variants (W3 injected issue;
+  Byzantine fact-check in both W4 scenarios), unlike the scripted model.
+  This establishes neither unchanged outputs nor general robustness.
+\item \textbf{Accidental faults can cause task failures.} A stale
+  capacity fails the W1 checker in 2 of 3 runs.
 \end{itemize}
 
 \section{Baselines}
 \textbf{Full restart} undoes what it can and reruns every step.
-\textbf{Always-verify} audits every step's output with the same model
-against the step's inputs, and its tokens are counted as extra inference cost.
+\textbf{Always-verify} audits each model output against its inputs with the
+same model; tool-only steps are not audited. Its tokens are counted as extra
+inference cost.
 Both see the same faulty runs (Table~\ref{tab:base}). \emph{Wasted work} is the
 number of rerun steps outside the fault's cone, which a dependency-aware method
 could avoid.
@@ -166,14 +166,14 @@ could avoid.
 steps (outside the cone), recovery time and tokens, irreversible calls
 re-sent, recovered correctly. Always-verify: audit tokens per run and their
 ratio to a clean run's tokens, detection rate (a faulty run counts as
-detected when the audit flags any step in the fault's cone), false-positive
-flags per run.}
+detected when the audit flags the producer or a step in its cone), off-cone
+flags (OC) per run. OC is not a validated false-positive count.}
 \label{tab:base}
 \setlength{\tabcolsep}{2.2pt}
 \begin{tabular}{@{}l|cccccc|cccc@{}}
 \toprule
  & \multicolumn{6}{c|}{full restart} & \multicolumn{4}{c}{always-verify} \\
-WL & rerun & waste & s & tok & irr. & ok & tok & $\times$ & det. & FP \\
+WL & rerun & waste & s & tok & irr. & ok & tok & $\times$ & det. & OC \\
 \midrule
 W1 & 14 & 6.0 & 36.3 & 2326 & 3.0 & 1.0 & 1245 & .51 & 1.00 & .33 \\
 W3$^\dagger$ & 5 & 1.0 & 10.6 & 592 & 0 & 1.0 & 575 & .87 & 0.67 & 0 \\
@@ -188,9 +188,10 @@ W4.ipi & 6 & 2.0 & 14.1 & 1097 & 1.0 & 1.0 & 712 & .66 & 1.00 & .25 \\
 (1)~Restart reruns many steps that never read the fault: on W1, 10 of 14 for
 the injected agenda and 4 of 14 for the capacity faults. It also re-sends every
 irreversible call (3.0 per W1 recovery), and it cannot recall the unauthorised
-e-mail. (2)~Always-verify adds 51--87\% of a clean run's tokens on
-\emph{every} run, faulty or not. It still misses one third of W3 faults and a
-quarter of W4.byz faults, and it raises false flags on clean steps.
+e-mail. (2)~Mean audit tokens are 51--87\% of the clean-run reference
+tokens, not a measured overhead for every clean or faulty run. The detection
+proxy misses one third of W3 faults and a quarter of W4.byz faults; off-cone
+flags have not been independently validated as false positives.
 (3)~$^\dagger$Our first W3 restart cells failed in every 7B run, although
 clean W3 succeeds 3/3. The cause was in our harness, not the model: restart
 undid each step's old effects only when that step reran, so the rerun
@@ -208,7 +209,7 @@ scenarios, and $n{=}3$ gives wide intervals.
 
 \paragraph{Takeaway for Phase 2.} Faults reach only part of each workflow, but
 restart pays for all of it and re-sends irreversible effects, while
-always-verify pays on every run and still misses faults. Phase~2 will use the
+always-verify adds audit cost and still misses faults. Phase~2 will use the
 recorded dependencies to rerun only the cone, reconcile effects instead of
 repeating them, and compare against these two baselines under identical fault
 schedules.
