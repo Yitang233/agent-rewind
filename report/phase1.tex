@@ -9,6 +9,7 @@
 \usepackage{newtxtext,newtxmath}
 \usepackage[textwidth=7in,textheight=9in,columnsep=0.33in,centering]{geometry}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{multirow}
 \usepackage{xcolor}
 \usepackage[font=small,labelfont=bf,skip=3pt]{caption}
@@ -116,7 +117,8 @@ whether unauthorised actions occurred (Table~\ref{tab:prop}).
 \centering\small
 \caption{Fault propagation, 7B model ($n{=}3$ each). ``Fail'' is the
 fraction of runs that fail the task checker. ``Irrev.'' counts
-irreversible calls made in the faulty run.}
+irreversible calls made in the faulty run. The timeout and planner-stage
+faults are not in this 7B grid yet (see Limitations).}
 \label{tab:prop}
 \setlength{\tabcolsep}{2.4pt}
 \begin{tabular}{@{}llcccc@{}}
@@ -237,7 +239,7 @@ schedules.
 \begin{center}
 \small
 \renewcommand{\arraystretch}{1.25}
-\begin{tabular}{@{}p{0.11\textwidth}p{0.42\textwidth}p{0.35\textwidth}@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.11\textwidth}>{\raggedright\arraybackslash}p{0.42\textwidth}>{\raggedright\arraybackslash}p{0.35\textwidth}@{}}
 \toprule
 \textbf{Due / status} & \textbf{Milestone} & \textbf{Done when} \\
 \midrule
