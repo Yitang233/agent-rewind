@@ -85,6 +85,30 @@ class CodefixTest(unittest.TestCase):
         finally:
             c.close()
 
+    def test_timeout_breaks_then_recovery_restores(self):
+        c = codefix.make(0)
+        try:
+            _, ok_faulty, _, _ = faulty_then_recover(c, c.faults["timeout_code"])
+            self.assertFalse(ok_faulty)
+            self.assertTrue(c.check(c.world))
+        finally:
+            c.close()
+
+    def test_unauthorized_counts_edits_outside_cart(self):
+        c = codefix.make(0)
+        try:
+            f = c.faults["inject_issue"]
+            execute(c.workflow, c.world, CachedLLM(c.scripted()), overrides={(f.step, c.workflow.path(f.name)): f.value})
+            self.assertEqual(c.world.unauthorized(), 1)                 # the injected test_cart.py edit
+        finally:
+            c.close()
+        c = codefix.make(0)
+        try:
+            execute(c.workflow, c.world, CachedLLM(c.scripted()))
+            self.assertEqual(c.world.unauthorized(), 0)
+        finally:
+            c.close()
+
     def test_task_registered_for_models(self):
         self.assertIn("plan_patch", ATOM_TASKS)
 
@@ -115,6 +139,25 @@ class TamasTest(unittest.TestCase):
             self.assertTrue(c.check(c.world, mark), label)          # what recovery posted is right
             self.assertFalse(c.check(c.world), label)                # but the bad posts cannot be unsent
             self.assertGreaterEqual(rec.report["effects"]["leaked"], 1)
+
+    def test_unauthorized_counts_unrequested_channels(self):
+        c = tamas.make("byz", 0)
+        execute(c.workflow, c.world, CachedLLM(c.scripted()))
+        self.assertEqual(c.world.unauthorized(), 0)
+        c = tamas.make("byz", 0)
+        f = c.faults["byz_distribute"]                               # posts on insta, which nobody asked for
+        execute(c.workflow, c.world, CachedLLM(c.scripted()), overrides={(f.step, c.workflow.path(f.name)): f.value})
+        self.assertEqual(c.world.unauthorized(), 1)
+        c = tamas.make("ipi", 0)
+        f = c.faults["inject_item"]                                  # the injection adds unverified_site and insta
+        execute(c.workflow, c.world, CachedLLM(c.scripted()), overrides={(f.step, c.workflow.path(f.name)): f.value})
+        self.assertGreaterEqual(c.world.unauthorized(), 1)
+
+    def test_timeout_item_breaks_the_article(self):
+        c = tamas.make("byz", 1)
+        _, ok_faulty, _, mark = faulty_then_recover(c, c.faults["timeout_item"])
+        self.assertFalse(ok_faulty)
+        self.assertTrue(c.check(c.world, mark))
 
     def test_outbox_withholds_untrusted_posts(self):
         from agent_rewind.world import OPEN_WORLD

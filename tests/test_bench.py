@@ -23,7 +23,7 @@ class BenchTest(unittest.TestCase):
         by = {}
         for c in cells:
             by[c["exp"]] = by.get(c["exp"], 0) + 1
-        self.assertEqual(by["E1"], ((1 + 3) + (1 + 3)) * 2)          # (clean + 3 faults) per workload, 2 repeats
+        self.assertEqual(by["E1"], ((1 + 5) + (1 + 4)) * 2)          # clean + 5 W1 faults, clean + 4 W3 faults, 2 repeats
         self.assertEqual(by["E2"], 2 * 2 * 2)
         self.assertEqual(by["E8"], 4)
         self.assertEqual(len({bench.cell_key(c) for c in cells}), len(cells))

@@ -44,17 +44,37 @@ def main():
               f"{mean(f['llm_calls'] for f in F):.0f}  {tok:.0f}  "
               f"{'-' if hits else format(mean(f['wall_s'] for f in F), '.1f')}  ({hits})")
 
-    unauth = {(r["spec"]["workload"], r["spec"]["fault"]): r.get("unauthorized", 0) for r in base}
-    print("\nTable 2  propagation: changed, steps hit, irreversible calls, unauthorised")
+    # Older cells record unauthorised actions only after recovery (baseline grid, 1 repeat); newer
+    # cells record them on the faulty run itself (`faulty.unauthorized`), which is what Table 2 means.
+    base_unauth = {(r["spec"]["workload"], r["spec"]["fault"]): r.get("unauthorized", 0) for r in base
+                   if r["spec"]["method"] == "restart" and r["spec"]["flags"]["audit"] == "none"}
+    clean_s = {w: mean(r["faulty"]["wall_s"] for r in e1 if r["spec"]["workload"] == w and r["spec"]["fault"] == "clean"
+                       and not r["faulty"]["llm"].get("cache_hits")) for w in WLS}
+    faulty_cells = [r for r in e1 if r["spec"]["fault"] != "clean"]
+    used = [r for r in faulty_cells if r["propagation"]["read_downstream"]]
+    print(f"\nTable 2  propagation ({len(faulty_cells) - len(used)} of {len(faulty_cells)} faulty cells excluded: "
+          "the injected value was never read)")
+    print("  workload fault (class)            fail  steps hit  irrev  unauth  latency s (clean)   [* = unauth from baseline grid]")
+    masked = []
     for w in WLS:
         steps = next(len(r["faulty"]["steps"]) for r in e1 if r["spec"]["workload"] == w)
-        for fault in sorted({r["spec"]["fault"] for r in e1 if r["spec"]["workload"] == w} - {"clean"}):
-            c = [r for r in e1 if r["spec"]["workload"] == w and r["spec"]["fault"] == fault]
-            print(f"  {w:7s} {fault:15s} {mean(r['propagation']['outcome_changed'] for r in c):.2f}  "
-                  f"{mean(len(r['propagation']['cone']) for r in c):.0f}/{steps}  "
-                  f"{mean(r['irreversible_calls_faulty'] for r in c):.1f}  {unauth.get((w, fault), 0)}")
+        for fault in sorted({r["spec"]["fault"] for r in used if r["spec"]["workload"] == w}):
+            c = [r for r in used if r["spec"]["workload"] == w and r["spec"]["fault"] == fault]
+            kind = "adv" if c[0]["spec"]["fault"].startswith(("inject", "byz")) else "acc"
+            fail = mean(r["propagation"]["outcome_changed"] for r in c)
+            if "unauthorized" in c[0]["faulty"]:
+                ua, mark = f"{mean(r['faulty']['unauthorized'] for r in c):.2f}", " "
+            else:
+                ua, mark = str(base_unauth.get((w, fault), "-")), "*"
+            live = [r["faulty"]["wall_s"] for r in c if not r["faulty"]["llm"].get("cache_hits")]
+            lat = f"{mean(live):.1f} ({clean_s[w]:.1f})" if live else "-"
+            print(f"  {w:7s} {fault:15s} ({kind})  {fail:.2f}  {mean(len(r['propagation']['cone']) for r in c):.0f}/{steps}"
+                  f"       {mean(r['irreversible_calls_faulty'] for r in c):.1f}    {ua}{mark}    {lat}")
+            masked += [(w, fault, sum(not r["propagation"]["outcome_changed"] for r in c), len(c))]
+    print("\n  read but masked (checker still passes): " +
+          (", ".join(f"{w}/{f} {m}/{n}" for w, f, m, n in masked if m) or "none"))
 
-    print("\nTable 3  restart: rerun, waste, s, tok, irr, ok | always-verify: tok, x clean, det, FP")
+    print("\nTable 3  restart: rerun, waste, s, tok, irr, ok | always-verify: tok, x clean, det, FP, ok")
     for w in WLS:
         rs = [r for r in base if r["spec"]["workload"] == w and r["spec"]["method"] == "restart"]
         R = [r for r in rs if r["spec"]["flags"]["audit"] == "none"]
@@ -65,7 +85,8 @@ def main():
               f"{mean(r['recovery']['wall_s'] for r in R):.1f}  {mean(r['recovery']['tokens'] for r in R):.0f}  "
               f"{mean(r['recovery']['irreversible_redone'] for r in R):.1f}  "
               f"{mean(r['recovery']['ok_recovered'] for r in R):.1f} | {av_tok:.0f}  {av_tok / clean_tok[w]:.2f}  "
-              f"{mean(r['detected'] for r in V):.2f}  {mean(r['fp_flags'] for r in V):.2f}")
+              f"{mean(r['detected'] for r in V):.2f}  {mean(r['fp_flags'] for r in V):.2f}  "
+              f"{mean(r['recovery']['ok_recovered'] for r in V):.2f}")
 
 
 if __name__ == "__main__":

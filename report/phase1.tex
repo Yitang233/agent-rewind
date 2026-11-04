@@ -74,7 +74,14 @@ that read the faulty value, directly or through another step.
 \paragraph{Faults.} One fault per run, at a chosen step: \emph{wrong} (a
 plausible false value), \emph{stale} (an outdated value), \emph{timeout} (a
 missing value) and \emph{malicious} (an injected instruction or a Byzantine
-agent). Accidental and adversarial faults are reported separately.
+agent). Accidental and adversarial faults are reported separately. Every
+workload has a timeout fault (W1 team size, W3 source file, W4 one feed
+item), and W1 also has a planner-stage fault (a room that never fits).
+\emph{Unauthorised actions} are actions the task does not allow, counted on
+the faulty run: e-mails to non-members (W1), edits to any file but
+\texttt{cart.py} (W3), and posts on channels the request did not name (W4).
+A faulty cell whose injected value no later step reads is excluded; a cell
+that is read but still passes the checker is reported as \emph{masked}.
 
 \section{Clean baseline}
 All four workloads succeed in 3/3 clean runs on both models
@@ -202,10 +209,13 @@ bug. Restart now undoes every compensable effect, newest first, before it
 reruns anything, and all three W3 cells recover. The same ordering problem can
 affect any method that rereads tool state, which Phase~2 has to handle.
 
-\paragraph{Limitations.} Timeout faults are covered only in a scripted
-single-meeting version of W1, where a missing team size changes the outcome and
-reaches both effects. They are not yet in the 7B grid. W4 uses 2 of TAMAS's
-scenarios, and $n{=}3$ gives wide intervals.
+\paragraph{Limitations.} The timeout and planner-stage faults, and the
+per-workload unauthorised-action counts, are implemented and pass the scripted
+grid, but the 7B grid has not been rerun with them yet. Until it is, the
+unauthorised column of Table~\ref{tab:prop} counts only e-mails (so W3 and W4
+read 0) and comes from the one-repeat baseline grid. W4 uses 2 of TAMAS's
+scenarios; no A2ASecBench attack is ported yet. $n{=}3$ (and $n{=}1$ for
+the baselines) gives wide intervals.
 
 \paragraph{Takeaway for Phase 2.} Faults reach only part of each workflow, but
 restart pays for all of it and re-sends irreversible effects, while
@@ -232,9 +242,9 @@ schedules.
 \textbf{Due / status} & \textbf{Milestone} & \textbf{Done when} \\
 \midrule
 \multicolumn{3}{@{}l}{\textit{Phase 1 --- fault injection and propagation (this report)}} \\
-Done & Review TAMAS and A2ASecBench; choose scenarios & two TAMAS scenarios ported (W4) \\
+Partial & Review TAMAS and A2ASecBench; choose scenarios & two TAMAS scenarios ported (W4); A2ASecBench not yet ported \\
 Done & Clean researcher--planner--executor baseline & W1, W3, W4 pass their checkers 3/3 \\
-Done & Fault-injection harness & wrong / stale / timeout / malicious faults at a chosen step \\
+Partial & Fault-injection harness & wrong / stale / timeout / malicious faults at a chosen step; timeout and planner-stage faults not yet in the 7B grid \\
 Done & Traces: messages, artifacts, tool actions, dependencies & every step records reads with hashes, writes, effects, cost \\
 Done & Measure clean runs and propagation & Tables 1--2 \\
 Done & Full-restart and always-verify baselines & Table 3 \\
@@ -251,7 +261,10 @@ Dec 10 & Submit Phase 2 code and the final report & 4--6 page report \\
 \end{tabular}
 \end{center}
 
-\paragraph{Open items carried into Phase 2.} Add timeout faults to the 7B grid;
+\paragraph{Open items carried into Phase 2.} Rerun the 7B grid with the timeout
+and planner-stage faults and the per-workload unauthorised counts; port at
+least one A2ASecBench attack; add a stateful SQLite procurement workload
+(inventory, orders, a mock irreversible payment) as in the proposal;
 make reruns that reread tool state see the world as it was before the fault,
 not as the faulty run left it; add the precision-versus-bookkeeping
 measurement (dependency granularity) that the brief asks for.
