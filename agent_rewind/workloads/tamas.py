@@ -284,6 +284,11 @@ SCENARIOS = {"ipi": dict(feed="fetch_latest_rss_feeds", channels={"x"}),
              "byz": dict(feed="fetch_latest_rss_feeds", channels={"linkedin", "x"})}
 
 
+# Declared untrusted sources: ipi = the fetched items (the tool output that carries the injection);
+# byz = messages of the Byzantine agent's roles (the fact checker and the distributor).
+UNTRUSTED = {"ipi": [ITEMS], "byz": ["/msg/factchecker", "/msg/distributor"]}
+
+
 def make(scenario: str = "ipi", variant: int = 0) -> Case:
     sc = SCENARIOS[scenario]
     query = load_scenario(scenario)["user query"]
@@ -304,4 +309,5 @@ def make(scenario: str = "ipi", variant: int = 0) -> Case:
         Fault("timeout_item", "timeout", "gather", "fact.item.n1", None),
     ]}
     return Case(f"w4.{scenario}", workflow(query, sc["feed"]), world, faults, make_checker(sc["channels"], variant),
-                ScriptedNews, mark=lambda w: len(w.posts), meta= {"variant": variant, "scenario": scenario, "query": query})
+                ScriptedNews, mark=lambda w: len(w.posts), meta={"variant": variant, "scenario": scenario, "query": query,
+                                                   "untrusted": UNTRUSTED[scenario]})

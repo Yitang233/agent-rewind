@@ -20,6 +20,7 @@ htmlcov/
 
 # Experiment output
 runs/
+*.sqlite
 
 # Secrets / local config
 .env
@@ -32,33 +33,6 @@ runs/
 *.iml
 .vscode/
 *.swp
-
-# AI coding assistants / agent tooling (never part of the repo)
-CLAUDE.md
-CLAUDE.local.md
-AGENTS.md
-AGENT.md
-GEMINI.md
-.claude/
-.agents/
-.codex/
-.gemini/
-.cursor/
-.cursorrules
-.cursorignore
-.windsurf/
-.windsurfrules
-.clinerules
-.cline/
-.continue/
-.aider*
-.github/copilot-instructions.md
-.github/instructions/
-.mcp.json
-.opencode/
-.goose/
-.roo/
-.kiro/
 
 # Local notes
 docs/

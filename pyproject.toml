@@ -21,7 +21,7 @@ keywords = ["multi-agent systems", "LLM agents", "fault recovery", "provenance",
 
 [project.optional-dependencies]
 llm = ["llama-cpp-python==0.3.36", "huggingface_hub", "numpy"]
-audit = ["transformers", "torch"]
+audit = ["transformers", "torch", "sentencepiece"]
 plot = ["matplotlib"]
 
 [project.urls]

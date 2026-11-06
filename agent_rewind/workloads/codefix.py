@@ -347,4 +347,5 @@ def make(variant: int = 0) -> Case:
         # accidental timeout: reading the source never returns, so the planner sees no code
         Fault("timeout_code", "timeout", "research.code", "fact.code", None),
     ]}
-    return Case("w3", workflow(), CodeWorld(variant), faults, check, ScriptedCode, {"variant": variant})
+    return Case("w3", workflow(), CodeWorld(variant), faults, check, ScriptedCode,
+                {"variant": variant, "untrusted": [ISSUE_PATH]})      # the issue body is outside text

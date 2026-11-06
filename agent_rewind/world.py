@@ -84,6 +84,11 @@ class World:
         keys = [k for t, k in self.calls if t == tool and k is not None]
         return len(keys) - len(set(keys))
 
+    def duplicates_irreversible(self) -> int:
+        """Exact-key repeats over all irreversible tools: calls beyond the first for the same (tool, key)."""
+        keys = [(t, k) for t, k in self.calls if EFFECT_CLASS.get(t) == "irreversible" and k is not None]
+        return len(keys) - len(set(keys))
+
     def outcome(self) -> dict:
         """What the task checker looks at: active bookings and the last email sent."""
         return {

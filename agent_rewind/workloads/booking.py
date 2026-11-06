@@ -217,6 +217,11 @@ def meetings_workflow(k: int = 3) -> Workflow:
     return Workflow(steps, names)
 
 
+def untrusted_paths(k: int = 3) -> list[str]:
+    """Declared untrusted sources of W1: the agenda text of each meeting (outside text a lookup returns)."""
+    return [m_path(i, "topic") for i in range(k)]
+
+
 def meetings_ok(world: World, k: int) -> bool:
     """Task checker: the expected active bookings, one email per meeting, each to exactly the team
     members and carrying that meeting's topic."""

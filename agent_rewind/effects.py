@@ -91,6 +91,7 @@ class Ledger:
         self.stats = dict(retained=0, applied=0, compensated=0, leaked=0, released=0, held=0,
                           withdrawn=0, deduped=0)
         self.held: list[str] = []
+        self.held_steps: list[str] = []      # steps of the held intents (same order)
         self.redone: list[str] = []          # tools of irreversible effects that were made again
 
     # ---- trust labels ---------------------------------------------------------------
@@ -192,24 +193,27 @@ class Ledger:
         self.stats["retained"] += sum(i.cls != "read" for i in out)
         return out
 
-    def commit(self, records) -> None:
-        """Commit point: release staged irreversible intents unless the trust rule holds them."""
+    def commit(self, records, hold=None) -> None:
+        """Commit point: release staged irreversible intents unless the trust rule holds them.
+        `hold(rec, intent) -> bool` replaces the label rule (the audit gate of audit.Auditor.gate:
+        the backward cone of the intent holds a flagged atom)."""
         if self.policy != "diff+outbox":
             return
         for rec in records:
             for it in rec.intents:
                 if it.cls != "irreversible" or it.released or it.withdrawn:
                     continue
-                if it.untrusted:
+                if hold(rec, it) if hold is not None else it.untrusted:
                     it.held = True
                     self.held.append(it.tool)
+                    self.held_steps.append(rec.step)
                     self.stats["held"] += 1
                 elif it.key in self.world.delivered:
-                    it.released = True
+                    it.released, it.held = True, False
                     self.stats["deduped"] += 1
                 else:
                     self.world.call(it.tool, _key=it.key, **it.args)
-                    it.released = True
+                    it.released, it.held = True, False
                     self.stats["released"] += 1
 
 
