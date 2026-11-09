@@ -41,6 +41,13 @@ class ReplayStats:
     reeval: int = 0           # single-token evaluations spent on those re-verifications
     wall_s: float = 0.0
     finish: str = "stop"
+    # profile: seconds per phase (t_other = wall - the rest: Python, grammar mask, logprobs)
+    t_prefill: float = 0.0    # prompt evaluation
+    t_verify: float = 0.0     # forward passes that carry draft tokens (batch > 1)
+    t_decode: float = 0.0     # single-token passes (plain decode steps)
+    t_tie: float = 0.0        # near-tie re-verification
+    t_resync: float = 0.0     # n-gram re-alignment
+    t_pick: float = 0.0       # grammar-constrained pick + logprob
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -65,7 +72,8 @@ def _gap(row) -> float:
 
 
 def decode(be, ids: list[int], draft: list[int] | None = None, mode: str = "resync", K: int = 32,
-           n: int = 4, max_tokens: int = 512, want_logprobs: bool = True, margin: float = 0.3):
+           n: int = 4, max_tokens: int = 512, want_logprobs: bool = True, margin: float = 0.3,
+           tie: str = "full"):
     """Greedy-decode a continuation of `ids`. Returns (tokens without eos, logprobs, ReplayStats).
     `draft` is the old output (tokens without eos); the end of the old output counts as eos.
 
@@ -73,51 +81,95 @@ def decode(be, ids: list[int], draft: list[int] | None = None, mode: str = "resy
     the 1.5B model). Once any batch > 1 has touched the cache, a position whose top-2 raw logit gap
     is below `margin` is re-decided from an exact state: the cache is cleared, the prompt is re-evaluated as one batch
     and the generated tokens one at a time (as a cold plain decode would), and the pick is
-    taken from that row. Rare, so the cost is small; margin=0 disables it."""
+    taken from that row. Rare, so the cost is small; margin=0 disables it.
+
+    tie="full" is that v1 re-check (whole prompt re-evaluated per tie). tie="local" gives the
+    same decisions without re-reading the prompt: the prompt is evaluated once, whole, the way a plain
+    decode does (`prefill`), so the cache is exact up to its end; `clean` counts the leading output
+    tokens whose KV was computed one at a time on an exact cache. A tie crops the cache to
+    prompt + out[:clean] and re-evaluates only out[clean:t] one token at a time."""
     if mode not in MODES:
         raise ValueError(f"replay mode {mode!r}")
+    if tie not in ("full", "local"):
+        raise ValueError(f"tie {tie!r}")
+    local = tie == "local"
     t0 = time.perf_counter()
     st = ReplayStats(mode=mode, prompt=len(ids))
+    pc = time.perf_counter
     old = (list(draft) + [be.eos]) if draft and mode != "off" else []
-    shared = be.begin(ids)
+    tp = pc()
+    if local:
+        shared, lead = be.prefill(ids)             # exact prompt state and the row after the prompt
+    else:
+        shared, lead = be.begin(ids), None
+    st.t_prefill = pc() - tp
     st.cached_prefix, st.prefilled = shared, len(ids) - shared
     con = be.constraint()
     out: list[int] = []
     lps: list[float] = []
-    pending = [ids[-1]]
+    pending = [] if local else [ids[-1]]
+    n_p = len(ids)
+    clean = 0                                     # (local) leading out tokens whose KV is exact
     ptr: int | None = 0 if old else None          # index in `old` of the next draft token
     dirty = False                                 # the cache holds entries computed in a batch > 1
     expect = 0
     try:
         while True:
             dr = old[ptr:ptr + K] if ptr is not None else []
-            rows = be.eval(pending + dr)
-            st.passes += 1
+            batch = pending + dr
+            if batch:
+                ta = pc()
+                rows = be.eval(batch)
+                if len(batch) > 1:
+                    st.t_verify += pc() - ta
+                else:
+                    st.t_decode += pc() - ta
+                st.passes += 1
+                if local and not dirty and len(batch) == 1 and pending:
+                    clean = len(out)            # one token on an exact cache stays exact
+            else:
+                rows = ()                       # first pass without a draft: the prompt's own row decides
             st.drafted += len(dr)
-            dirty = dirty or len(pending) + len(dr) > 1
+            dirty = dirty or len(batch) > 1
             base, j, finished, rebuilt = len(pending) - 1, 0, False, False
             while True:
-                row = rows[base + j]
-                if dirty and margin > 0 and _gap(row) < margin:
-                    # cache is exact up to out[:len(out)] only after a sequential rebuild
+                if base + j < 0:
+                    row, exact_row = lead, True
+                else:
+                    row, exact_row = rows[base + j], False
+                if dirty and not exact_row and margin > 0 and _gap(row) < margin:
                     st.ties += 1
-                    be.crop(0)                  # as a cold plain decode: whole prompt in one batch,
-                    row = be.eval(ids)[-1]      # then one generated token per evaluation
-                    st.reeval += len(ids)
-                    for t in out:
-                        row = be.eval([t])[0]
-                        st.reeval += 1
+                    tt = pc()
+                    if local:
+                        s_ = min(clean, len(out) - 1)       # exact KV for out[:s_]; redo out[s_:] singly
+                        be.crop(n_p + s_)
+                        for t in out[s_:]:
+                            row = be.eval([t])[0]
+                            st.reeval += 1
+                        clean = len(out)
+                    else:
+                        # cache is exact up to out[:len(out)] only after a sequential rebuild
+                        be.crop(0)                  # as a cold plain decode: whole prompt in one batch,
+                        row = be.eval(ids)[-1]      # then one generated token per evaluation
+                        st.reeval += len(ids)
+                        for t in out:
+                            row = be.eval([t])[0]
+                            st.reeval += 1
+                    st.t_tie += pc() - tt
                     dirty, rebuilt = False, True
+                tq = pc()
                 tok = con.pick(row)
                 hit = j < len(dr) and tok == dr[j]
                 if tok == be.eos:
                     st.finish, finished = "stop", True
+                    st.t_pick += pc() - tq
                     break
                 if want_logprobs:
                     r = row.astype(np.float64)
                     m = r.max()
                     lps.append(float(r[tok] - m - np.log(np.exp(r - m).sum())))
                 con.accept(tok)
+                st.t_pick += pc() - tq
                 out.append(tok)
                 if hit:
                     st.accepted += 1
@@ -146,10 +198,12 @@ def decode(be, ids: list[int], draft: list[int] | None = None, mode: str = "resy
                 if ptr is None and mode == "prefix":
                     old = []
             if ptr is None and mode == "resync" and old:
+                tr = pc()
                 new = _resync(old, out, n, expect)
                 if new is not None and new < len(old):
                     st.resyncs += 1
                     ptr = new
+                st.t_resync += pc() - tr
     finally:
         con.close()
     st.wall_s = time.perf_counter() - t0
@@ -179,6 +233,21 @@ class LlamaBackend:
         if len(ids) - 1 > shared:
             llm.eval(ids[shared:-1])
         return shared
+
+    def prefill(self, ids: list[int]):
+        """Evaluate the whole prompt like a plain decode (prefix reuse, then chunks of n_batch from the
+        first new token). Returns (shared prefix length, the logits row after the prompt, copied)."""
+        llm = self.llm
+        have = [int(t) for t in llm.input_ids[:llm.n_tokens]] if llm.n_tokens else []
+        shared = 0
+        while shared < min(len(ids), len(have)) and ids[shared] == have[shared]:
+            shared += 1
+        shared = min(shared, len(ids) - 1)
+        self.crop(shared)
+        import llama_cpp
+        llm.eval(ids[shared:])                    # as llm.generate does: chunks of n_batch, logits of the last token only
+        row = np.ctypeslib.as_array(llama_cpp.llama_get_logits_ith(llm._ctx.ctx, -1), shape=(self.V,))
+        return shared, row.copy()
 
     def crop(self, n: int) -> None:
         llm = self.llm
@@ -274,6 +343,14 @@ class FakeBackend:
         self.crop(shared)
         self.kv += list(ids[shared:-1])
         return shared
+
+    def prefill(self, ids):
+        shared = 0
+        while shared < min(len(ids), len(self.kv)) and ids[shared] == self.kv[shared]:
+            shared += 1
+        shared = min(shared, len(ids) - 1)
+        self.crop(shared)
+        return shared, self.eval(ids[shared:])[-1].copy()
 
     def crop(self, n):
         del self.kv[n:]

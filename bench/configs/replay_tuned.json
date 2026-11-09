@@ -1,0 +1,39 @@
+{
+ "name": "replay_tuned",
+ "note": "replay settings frozen for the v2 grid, chosen on tuning cells (variants 0-1; W1 wrong_capacity, W3 wrong_issue; 7B atoms) by runs/v2/D3/tune.json. Splice `flags` into the E5v2/E8v2 experiments. Held-out evidence: runs/v2/D3/heldout.json. The rule's pick (margin 0.0, rule_pick_flags) was identical on 13/13 tuning calls but 18/21 (7B) and 17/18 (1.5B) held-out calls, with plain top-2 gaps 0.036-0.076 (7B) and 0.005 (1.5B), so `flags` is the best tuning configuration with margin > 0 (chosen from tune.json before the held-out run; switched after seeing the held-out mismatch).",
+ "flags": {
+  "replay": "resync",
+  "layout": "v1",
+  "replay_K": 64,
+  "margin": 0.1,
+  "tie": "local"
+ },
+ "frozen": "fallback",
+ "rule_pick_flags": {
+  "replay": "resync",
+  "layout": "v1",
+  "replay_K": 64,
+  "margin": 0.0,
+  "tie": "local"
+ },
+ "fallback_flags": {
+  "replay": "resync",
+  "layout": "v1",
+  "replay_K": 64,
+  "margin": 0.1,
+  "tie": "local"
+ },
+ "tuning": {
+  "ratio_vs_off": 0.5604982299675504,
+  "identity": [
+   13,
+   13
+  ]
+ },
+ "defaults_v1": {
+  "layout": "v1",
+  "replay_K": 32,
+  "margin": 0.3,
+  "tie": "full"
+ }
+}

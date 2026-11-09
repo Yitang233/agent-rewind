@@ -133,8 +133,9 @@ class OllamaLLM:
 class CachedLLM:
     """Counts calls and tokens; identical (role, task, inputs) are served from the cache."""
 
-    def __init__(self, inner) -> None:
+    def __init__(self, inner, dedupe: bool = True) -> None:
         self.inner = inner
+        self.dedupe = dedupe        # False: every call goes to `inner` (live-cost runs); the memo is still filled
         self.cache: dict[str, dict] = {}
         self.atoms: dict[str, list] = {}
         self.extra: dict[str, tuple] = {}
@@ -145,7 +146,7 @@ class CachedLLM:
 
     def complete(self, role: str, task: str, inputs: dict) -> tuple[dict, int]:
         key = digest([role, task, inputs])
-        if key in self.cache:
+        if self.dedupe and key in self.cache:
             self.hits += 1
             self.last_atoms = self.atoms.get(key, [])
             self.last_conf, self.last_nominal = self.extra.get(key, ({}, 0))
@@ -182,7 +183,7 @@ class LlamaCppLLM:
     def __init__(self, model_path: str, cache_path: str | None = None, n_ctx: int = 8192,
                  max_tokens: int = 512, model_sha: str | None = None, verbose: bool = False,
                  logits_all: bool = False, replay: str = "off", style: str = "atoms", K: int = 32,
-                 resync_n: int = 4, margin: float = 0.3) -> None:
+                 resync_n: int = 4, margin: float = 0.3, tie: str = "full", layout: str = "v1") -> None:
         import hashlib
         import sqlite3
 
@@ -204,10 +205,11 @@ class LlamaCppLLM:
                        "decoded": 0, "wall_s": 0.0}
         self.last_atoms, self.last_conf, self.last_text, self.last_tokens = [], {}, "", 0
         self.last_stats: dict = {}
+        self.last_out_tokens = 0
         self.last_parsed = None
         # M1 replay: `drafts` maps a step name to the old output tokens; `history` records every
         # computed output by step name. `cur_step` is set by the engine before each ask.
-        self.margin = margin
+        self.margin, self.tie, self.layout = margin, tie, layout     # tie: full|local re-check; layout: v1|stable
         self.replay, self.style, self.K, self.resync_n = replay, style, K, resync_n
         self.drafts: dict[str, list[int]] = {}
         self.history: dict[str, list[int]] = {}
@@ -275,7 +277,7 @@ class LlamaCppLLM:
         if draft is not None:
             from . import replay as R
             toks, lps, rstats = R.decode(R.LlamaBackend(llm, grammar), ids, draft, self.replay, self.K,
-                                         self.resync_n, self.max_tokens, True, self.margin)
+                                         self.resync_n, self.max_tokens, True, self.margin, self.tie)
             pieces = [llm.detokenize([t]).decode("utf-8", errors="replace") for t in toks]
             finish = rstats.finish
         else:
@@ -301,7 +303,9 @@ class LlamaCppLLM:
         if rstats is not None:
             stats.update(cached_prefix=rstats.cached_prefix, prefill=rstats.prefilled, decoded=rstats.decoded,
                          accepted=rstats.accepted, drafted=rstats.drafted, passes=rstats.passes,
-                         resyncs=rstats.resyncs, ties=rstats.ties, reeval=rstats.reeval, replay=self.replay)
+                         resyncs=rstats.resyncs, ties=rstats.ties, reeval=rstats.reeval, replay=self.replay,
+                         **{k: getattr(rstats, k) for k in ("t_prefill", "t_verify", "t_decode", "t_tie",
+                                                            "t_resync", "t_pick")})
         if step:
             self.history[step] = list(toks)
         ch = {"text": text}
@@ -317,11 +321,14 @@ class LlamaCppLLM:
     def complete(self, role: str, task: str, inputs: dict) -> dict:
         instructions, answer_schema, hint = ATOM_TASKS[task]
         groups = A.groups_from_json(inputs["groups"])
+        stable = self.layout == "stable"
         if self.style == "cot":                       # free chain of thought instead of per-group atoms
-            system, user = cot_prompt(role, instructions, groups, hint)
+            system, user = stable_prompt(role, instructions, groups, hint, cot=True) if stable \
+                else cot_prompt(role, instructions, groups, hint)
             schema = cot_schema(answer_schema)
         else:
-            system, user = A.build_prompt(role, instructions, groups, hint)
+            system, user = stable_prompt(role, instructions, groups, hint) if stable \
+                else A.build_prompt(role, instructions, groups, hint)
             schema = A.atom_schema(groups, answer_schema)
         prompt = A.chatml(system, user)
         g = self.generate(prompt, schema, step=self.cur_step)
@@ -350,6 +357,7 @@ class LlamaCppLLM:
         self.last_atoms = parsed.atoms if self.style != "cot" else []
         self.last_conf = conf
         self.last_tokens = st["prefill"] + st["decoded"]
+        self.last_out_tokens = len(g["tokens"])       # output length (st["decoded"] counts only freshly decoded tokens)
         t = self.totals
         t["calls"] += 1
         for k in ("prompt", "cached_prefix", "prefill", "decoded"):
@@ -360,6 +368,27 @@ class LlamaCppLLM:
         if not parsed.ok:
             raise ValueError(f"unparseable model output: {g['text'][:200]!r}")
         return parsed.answer
+
+
+def stable_prompt(role: str, instructions: str, groups, hint: str, cot: bool = False) -> tuple[str, str]:
+    """layout=stable. Text that is the same for every call of a task comes first (role-free system
+    text, then the task template), the input groups follow in the order the workload laid them out, and
+    everything that varies with the call (the role, the number of atoms) comes last. Two calls of one task
+    then share their prompt up to the first group on which they differ."""
+    system = "You are an agent in a multi-agent workflow. Reply with JSON only."
+    lines = [instructions, ""]
+    for g in groups:
+        lines.append(f"## {g.title}")
+        lines += [f"[{p}] = {json.dumps(v)}" for p, v in g.paths.items()]
+        lines.append("")
+    if cot:
+        lines.append(f"You are the {role}. First write `reasoning`: think step by step in a short paragraph. "
+                     f"Then give the answer. {hint}")
+    else:
+        lines.append(f"You are the {role}. Write exactly {len(groups)} atoms, one per section above and in the same "
+                     "order. Each atom has `cites` (the paths of that section you used) and `text` (one short "
+                     f"sentence). Then give the answer. {hint}")
+    return system, "\n".join(lines) + "\n"
 
 
 def cot_prompt(role: str, instructions: str, groups, hint: str) -> tuple[str, str]:
