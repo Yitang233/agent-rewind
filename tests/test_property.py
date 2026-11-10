@@ -12,7 +12,7 @@ import random
 import time
 import unittest
 
-from agent_rewind.engine import execute
+from agent_rewind.engine import dynamic_cone, execute, explain_reruns
 from agent_rewind.workloads.dag import generate
 
 N_CASES = 520
@@ -76,7 +76,52 @@ def check_case(seed: int) -> tuple[list[str], dict]:
     return bad, stats
 
 
+N_SHARED = 330
+
+
+def check_cone(seed: int) -> list[str]:
+    """Reruns of selective recovery are explained by the engine's own dependency closure."""
+    rng = random.Random(10_000 + seed)
+    p = params(rng)
+    p["shared_keys"] = (0, 3, 6)[seed % 3]
+    dag = generate(**p)
+    wf, bad = dag.workflow, []
+    tier = rng.choice([None, None, 3, 2])
+    clean = execute(wf, dag.world(), None, depth=tier, effects=EFF)
+    step, path, wrong = dag.fault_for(clean, rng)
+    world = dag.world()
+    faulty = execute(wf, world, None, overrides={(step, path): wrong}, depth=tier, effects=EFF)
+    w1, w2 = copy.deepcopy(world), copy.deepcopy(world)
+    sel = execute(wf, w1, None, prior=faulty, dirty={step}, policy="selective")
+    rs = execute(wf, w2, None, prior=faulty, policy="restart")
+    if sel.values() != rs.values():
+        bad.append("final(selective) != final(restart)")
+    if sel.values() != clean.values():
+        bad.append("final(selective) != clean")
+    reran = set(sel.report["rerun"])
+    for label, other in (("clean", clean), ("recovered", sel)):
+        d = dynamic_cone(faulty, other)
+        extra = reran - d["cone"] - {step} - d["new"]
+        if extra:
+            bad.append(f"reruns outside the dynamic cone (vs {label}): {sorted(extra)}")
+        missed = d["cone"] - reran
+        if missed:
+            bad.append(f"dynamic cone step not rerun (vs {label}): {sorted(missed)}")
+    cls = explain_reruns(faulty, sel, {step}, set())
+    if "dirty_seed" in cls.values():
+        bad.append("rerun without a changed read")
+    return bad
+
+
 class PropertyTest(unittest.TestCase):
+    def test_reruns_within_dynamic_cone_shared_keys(self):
+        t0, failures = time.perf_counter(), []
+        for seed in range(N_SHARED):
+            failures += [f"seed {seed}: {b}" for b in check_cone(seed)]
+        elapsed = time.perf_counter() - t0
+        self.assertEqual(failures[:5], [], f"{len(failures)} violations")
+        self.assertLess(elapsed, 90, f"{N_SHARED} cases took {elapsed:.1f}s")
+
     def test_seeded_dag_fault_cases(self):
         t0, failures = time.perf_counter(), []
         for seed in range(N_CASES):

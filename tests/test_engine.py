@@ -193,5 +193,51 @@ class BookingRegression(unittest.TestCase):
         self.assertEqual(rows["selective-d2/fact"]["rerun"], 3)
 
 
+class OutOfConeReruns(unittest.TestCase):
+    """Every rerun outside the path-overlap cone has a cause the dynamic cone explains."""
+
+    def _cone(self, faulty, path):
+        from agent_rewind.bench import affected_steps
+        return affected_steps(faulty, path)
+
+    def test_control_flow_change_reruns_a_reader_outside_the_static_cone(self):
+        steps = [Step("a", "x", lambda c: c.write("/kv/a", 1)),
+                 Step("g", "x", lambda c: c.write("/kv/g", 7), when=lambda c: c.read("/kv/a") == 1),
+                 Step("r", "x", lambda c: c.write("/kv/r", c.read("/kv/g", 0) + 1))]
+        wf, llm, clean, faulty, world = setup(steps, {("a", "/kv/a"): 0})
+        self.assertEqual(self._cone(faulty, "/kv/a"), set())                  # static cone is empty ...
+        rec = execute(wf, world, llm(), prior=faulty, dirty={"a"})
+        self.assertEqual(rec.report["rerun"], ["a", "g", "r"])                # ... yet r must rerun
+        d = engine.dynamic_cone(faulty, rec)
+        self.assertEqual((d["cone"], d["new"]), ({"r"}, {"g"}))
+        cls = engine.explain_reruns(faulty, rec, {"a"}, set())
+        self.assertEqual(cls, {"a": "origin", "g": "new_step", "r": "control_flow"})
+        self.assertEqual(rec.values(), clean.values())
+
+    def test_write_set_change_is_in_the_dynamic_cone_not_the_static_one(self):
+        steps = [Step("a", "x", lambda c: c.write("/kv/a", 1)),
+                 Step("w", "x", lambda c: (c.write("/kv/o", 1), c.read("/kv/a") % 2 and c.write("/kv/alt", 5))),
+                 Step("r", "x", lambda c: c.write("/kv/r", c.read("/kv/alt", 0)))]
+        wf, llm, clean, faulty, world = setup(steps, {("a", "/kv/a"): 2})
+        rec = execute(wf, world, llm(), prior=faulty, dirty={"a"})
+        self.assertEqual(rec.report["rerun"], ["a", "w", "r"])
+        self.assertEqual(self._cone(faulty, "/kv/a"), {"w"})
+        self.assertEqual(engine.dynamic_cone(faulty, rec)["cone"], {"w", "r"})
+        self.assertEqual(engine.dynamic_cone(faulty, clean)["cone"], {"w", "r"})
+        self.assertEqual(engine.explain_reruns(faulty, rec, {"a"}, {"w"})["r"], "shadow")
+
+    def test_dirty_seed_on_a_shared_key_is_the_callers_over_invalidation(self):
+        steps = [Step("s1", "x", lambda c: c.write("/kv/k", 1)),
+                 Step("s2", "x", lambda c: c.write("/kv/k", 2)),
+                 Step("s3", "x", lambda c: c.write("/kv/o", c.read("/kv/k")))]
+        wf, llm, clean, faulty, world = setup(steps, {("s1", "/kv/k"): 9})
+        over = execute(wf, world, llm(), prior=faulty, dirty=producers(faulty, {"/kv/k"}))
+        self.assertEqual(over.report["rerun"], ["s1", "s2"])                  # s2 rerun with nothing changed
+        self.assertEqual(engine.explain_reruns(faulty, over, {"s1"}, set())["s2"], "dirty_seed")
+        exact = execute(wf, world, llm(), prior=faulty, dirty={"s1"})
+        self.assertEqual(exact.report["rerun"], ["s1"])                       # the engine reuses s2 and s3
+        self.assertEqual(exact.values(), clean.values())
+
+
 if __name__ == "__main__":
     unittest.main()

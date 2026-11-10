@@ -6,7 +6,7 @@ selective     -- rerun the faulty producer; every other step is reused when its 
                  reads still hash the same (early cutoff comes from the hashes)
 selective-d2  -- the earlier forward-propagation algorithm (baseline)
 
-`early_cutoff=False` with `selective` selects the D2 algorithm without cutoff, as the old
+`early_cutoff=False` with `selective` selects the dependency-cone algorithm without cutoff, as the old
 code did. `granularity` is a property of the prior run (its depth tier), so it is accepted
 for compatibility and not used here.
 """

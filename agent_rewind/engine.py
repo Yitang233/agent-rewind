@@ -346,15 +346,77 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
                 run.orphans.append(name)
 
     if commit:
-        ledger.commit(run.last().values())
+        ledger.commit(run.last().values(), audit.gate(run) if audit is not None and hasattr(audit, "gate") else None)
 
     fresh = [r for r in run.records if not r.reused]
     report["compensated"] = ledger.stats["compensated"]
     report["irreversible_redone"] = list(ledger.redone)
-    report.update(effects=dict(ledger.stats), held=list(ledger.held), world_ms=getattr(world, "clock_ms", 0.0) - clock0,
+    report.update(effects=dict(ledger.stats), held=list(ledger.held), held_steps=list(ledger.held_steps), world_ms=getattr(world, "clock_ms", 0.0) - clock0,
                   orphans=list(run.orphans), llm_calls=sum(r.cost.llm_calls for r in fresh),
                   tokens=sum(r.cost.tokens for r in fresh), latency_s=time.perf_counter() - start)
     if audit is not None:
         report["audit"] = audit.summary(run)
     run.report = report
     return run
+
+
+# ---- dynamic cone ----------------------------------------------------------------------------
+
+def dynamic_cone(prior: Run, other: Run) -> dict:
+    """The engine's own dependency closure, read off the recorded read hashes.
+
+    `other` is the run the prior should become: the recovery, or an independent clean reference. A step
+    of `prior` is in the cone when it also ran in `other` with a different recorded read set (a read path
+    added, dropped, or hashing differently). A step of `other` that `prior` never ran is `new` (the fault
+    changed control flow); a step of `prior` that `other` skips is `dropped`. Unlike a path-overlap cone
+    this follows shared-key versions, write-set changes and steps that only appear on the other path."""
+    old, new = prior.last(), other.last()
+    cone = {n for n, o in old.items() if n in new and dict(o.reads) != dict(new[n].reads)}
+    return {"cone": cone, "new": set(new) - set(old), "dropped": set(old) - set(new)}
+
+
+def _writer(run: Run, step: str, path: str) -> str | None:
+    """Latest step before `step` in `run` whose writes overlap `path`."""
+    hit = None
+    for r in run.records:
+        if r.step == step:
+            break
+        if any(overlaps(w, path) for w, _ in r.writes):
+            hit = r.step
+    return hit
+
+
+def explain_reruns(prior: Run, rec: Run, origin, static_cone) -> dict[str, str]:
+    """Class of every step `rec` reran, relative to the path-overlap cone `static_cone`:
+      origin       the fault step (or a step in `origin`)
+      cone         in the static cone
+      shadow       outside it only because a shared key / write set changed which version a read sees
+                   (same writer step in both runs, but a different path set or hash)
+      control_flow reads a value written (possibly through a chain) by a step the fault added to the run,
+                   or that no longer runs
+      dirty_seed   reads unchanged: the caller marked it dirty without cause (no engine over-invalidation)"""
+    old = prior.last()
+    out = {}
+    for name in rec.report["rerun"]:
+        if name in origin:
+            out[name] = "origin"
+        elif name in static_cone:
+            out[name] = "cone"
+        elif name not in old:
+            out[name] = "new_step"
+        else:
+            o, n = dict(old[name].reads), dict(rec.last()[name].reads)
+            diff = [p for p in set(o) | set(n) if o.get(p) != n.get(p)]
+            if not diff:
+                out[name] = "dirty_seed"
+                continue
+            kinds = set()
+            for p in diff:
+                wn, wo = _writer(rec, name, p), _writer(prior, name, p)
+                if (wn != wo and ((wn is not None and wn not in old) or (wo is not None and wo not in rec.last()))) \
+                        or out.get(wn) in ("control_flow", "new_step"):
+                    kinds.add("control_flow")                      # directly, or through an earlier such step
+                else:
+                    kinds.add("shadow")
+            out[name] = "control_flow" if "control_flow" in kinds else "shadow"
+    return out
