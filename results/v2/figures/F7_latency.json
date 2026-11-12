@@ -1,0 +1,68 @@
+{
+ "D3_callevel": {
+  "plain (D3 held-out, 7B)": {
+   "t_prefill": 0,
+   "t_verify": 0,
+   "t_tie": 0,
+   "t_decode": 157.75330229190877,
+   "t_pick": 0,
+   "t_resync": 0,
+   "other": 0
+  },
+  "v1 replay K32 m0.3 full tie (D3 profile)": {
+   "t_prefill": 1.6079600420489442,
+   "t_verify": 28.125781456910772,
+   "t_tie": 20.136673500062898,
+   "t_decode": 12.188716227770783,
+   "t_pick": 1.6592482060659677,
+   "t_resync": 0.006127425382146612,
+   "other": 1.9618913927406538
+  },
+  "tuned (D3 held-out, 7B)": {
+   "t_prefill": 14.543433170067146,
+   "t_verify": 29.0343149578257,
+   "t_tie": 14.825637791975169,
+   "t_decode": 23.588037921319483,
+   "t_pick": 3.1189129418926314,
+   "t_resync": 0.012830200663302094,
+   "wall": 88.61359883393743,
+   "other": 3.4904318501939997
+  }
+ },
+ "E5v2_full": {
+  "off": {
+   "n": 36,
+   "recovery_wall": 13.60827943855515,
+   "llm_wall": 13.542672222222222,
+   "bookkeeping": 0.0004596088611111111,
+   "other_tools_etc": 0.06514760747181732,
+   "prefill_tokens": 547.4444444444445,
+   "decoded_tokens": 251.63888888888889,
+   "accepted_tokens": 0.0
+  },
+  "prefix": {
+   "n": 36,
+   "recovery_wall": 12.481907979106634,
+   "llm_wall": 12.40868611111111,
+   "bookkeeping": 0.00043489277777777777,
+   "other_tools_etc": 0.07278697521774499,
+   "prefill_tokens": 547.4444444444445,
+   "decoded_tokens": 163.55555555555554,
+   "accepted_tokens": 88.08333333333333
+  },
+  "resync": {
+   "n": 36,
+   "recovery_wall": 7.2517097522496545,
+   "llm_wall": 7.184813888888889,
+   "bookkeeping": 0.0004422371666666667,
+   "other_tools_etc": 0.06645362619409903,
+   "prefill_tokens": 547.4444444444445,
+   "decoded_tokens": 76.0,
+   "accepted_tokens": 175.63888888888889
+  }
+ },
+ "D3_call_counts": {
+  "tuned": 7,
+  "off": 7
+ }
+}

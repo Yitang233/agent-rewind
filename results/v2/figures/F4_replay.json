@@ -1,0 +1,217 @@
+{
+ "H1": {
+  "w1/prefix": {
+   "n_pairs": 12,
+   "wall_ratio_median": 0.8942393798654595,
+   "wall_ratio_mean": 0.8989793217512968,
+   "wall_ratio_min_max": [
+    0.5461808781354768,
+    1.4308718975385641
+   ],
+   "wall_ratio_median_by_style": {
+    "atoms": [
+     0.6960968449742635,
+     6
+    ],
+    "cot": [
+     0.992462286245086,
+     6
+    ]
+   },
+   "decoded_ratio_median": 0.5341001155485902,
+   "decoded_ratio_mean": 0.5125680703033495,
+   "wall_ratio_median_ci95": [
+    0.6960968449742635,
+    1.023668379439419
+   ]
+  },
+  "w1/resync": {
+   "n_pairs": 12,
+   "wall_ratio_median": 0.3823092312305182,
+   "wall_ratio_mean": 0.4112220222972223,
+   "wall_ratio_min_max": [
+    0.25041806357797797,
+    0.7092716180805764
+   ],
+   "wall_ratio_median_by_style": {
+    "atoms": [
+     0.3823092312305182,
+     6
+    ],
+    "cot": [
+     0.3816634293760801,
+     6
+    ]
+   },
+   "decoded_ratio_median": 0.1906885758998435,
+   "decoded_ratio_mean": 0.18531879804573922,
+   "wall_ratio_median_ci95": [
+    0.3475846113326707,
+    0.4373638984000619
+   ]
+  },
+  "w3/prefix": {
+   "n_pairs": 12,
+   "wall_ratio_median": 0.9623483512848032,
+   "wall_ratio_mean": 0.9787990672863085,
+   "wall_ratio_min_max": [
+    0.5476559273027675,
+    1.4757573823504382
+   ],
+   "wall_ratio_median_by_style": {
+    "atoms": [
+     0.6628418790449543,
+     6
+    ],
+    "cot": [
+     1.0571745734118216,
+     6
+    ]
+   },
+   "decoded_ratio_median": 0.8820418781184698,
+   "decoded_ratio_mean": 0.8234820583544505,
+   "wall_ratio_median_ci95": [
+    0.6628418790449543,
+    1.2435068381323044
+   ]
+  },
+  "w3/resync": {
+   "n_pairs": 12,
+   "wall_ratio_median": 0.6827952115024964,
+   "wall_ratio_mean": 0.6955380997096158,
+   "wall_ratio_min_max": [
+    0.2729563008656887,
+    1.3447047059824695
+   ],
+   "wall_ratio_median_by_style": {
+    "atoms": [
+     0.6249898103880036,
+     6
+    ],
+    "cot": [
+     0.7194702250881049,
+     6
+    ]
+   },
+   "decoded_ratio_median": 0.640990990990991,
+   "decoded_ratio_mean": 0.53370772326794,
+   "wall_ratio_median_ci95": [
+    0.5590731394458255,
+    0.7726914372650038
+   ]
+  },
+  "w4.ipi/prefix": {
+   "n_pairs": 6,
+   "wall_ratio_median": 0.9386016797543004,
+   "wall_ratio_mean": 0.9691698633814646,
+   "wall_ratio_min_max": [
+    0.8649337751506412,
+    1.2257080315413156
+   ],
+   "wall_ratio_median_by_style": {
+    "atoms": [
+     0.9415274823856706,
+     3
+    ],
+    "cot": [
+     0.8838066704971408,
+     3
+    ]
+   },
+   "decoded_ratio_median": 0.844260840915427,
+   "decoded_ratio_mean": 0.861689231870225,
+   "wall_ratio_median_ci95": [
+    0.874370222823891,
+    1.0945376875662025
+   ]
+  },
+  "w4.ipi/resync": {
+   "n_pairs": 6,
+   "wall_ratio_median": 0.7005517629855313,
+   "wall_ratio_mean": 0.6985676803406826,
+   "wall_ratio_min_max": [
+    0.5151679710376403,
+    0.8779961287359338
+   ],
+   "wall_ratio_median_by_style": {
+    "atoms": [
+     0.6883548871574152,
+     3
+    ],
+    "cot": [
+     0.7127486388136474,
+     3
+    ]
+   },
+   "decoded_ratio_median": 0.4243089235989452,
+   "decoded_ratio_mean": 0.43255866622313704,
+   "wall_ratio_median_ci95": [
+    0.5200387454000261,
+    0.8751125326364906
+   ]
+  },
+  "w4.byz/prefix": {
+   "n_pairs": 6,
+   "wall_ratio_median": 0.9908315929133409,
+   "wall_ratio_mean": 1.0205939768991825,
+   "wall_ratio_min_max": [
+    0.7596855940211322,
+    1.3555997868854106
+   ],
+   "wall_ratio_median_by_style": {
+    "atoms": [
+     1.1389172134982424,
+     3
+    ],
+    "cot": [
+     0.9122674341253002,
+     3
+    ]
+   },
+   "decoded_ratio_median": 0.5689864132168144,
+   "decoded_ratio_mean": 0.5123730206115021,
+   "wall_ratio_median_ci95": [
+    0.8236918375923803,
+    1.2472585001918266
+   ]
+  },
+  "w4.byz/resync": {
+   "n_pairs": 6,
+   "wall_ratio_median": 0.5022559093553092,
+   "wall_ratio_mean": 0.5251395791770446,
+   "wall_ratio_min_max": [
+    0.3277531998969161,
+    0.735394632177474
+   ],
+   "wall_ratio_median_by_style": {
+    "atoms": [
+     0.4878012002774511,
+     3
+    ],
+    "cot": [
+     0.515284949255612,
+     3
+    ]
+   },
+   "decoded_ratio_median": 0.21310552440481662,
+   "decoded_ratio_mean": 0.2393353909728179,
+   "wall_ratio_median_ci95": [
+    0.4077772000871836,
+    0.665385628088641
+   ]
+  }
+ },
+ "D3_callevel_wall_ratio": {
+  "7b": {
+   "synth": 1.0483725695685366,
+   "w1": 0.4152943425596178,
+   "w3": 0.8924055335035547
+  },
+  "1.5b": {
+   "w3": 0.4642675538880743,
+   "w4.byz": 0.2149664648256125,
+   "w4.ipi": 0.24798923198244463
+  }
+ },
+ "note": "1.5B has no full-cell data (cut, preregistration.json); points are D3 call-level"
+}

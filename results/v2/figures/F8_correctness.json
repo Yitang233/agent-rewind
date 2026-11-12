@@ -1,0 +1,302 @@
+{
+ "w1/restart": {
+  "n": 10,
+  "ok_recovered": [
+   8,
+   10
+  ],
+  "values_match": [
+   10,
+   10
+  ],
+  "reuse_valid": [
+   0,
+   0
+  ]
+ },
+ "w1/rollback": {
+  "n": 10,
+  "ok_recovered": [
+   8,
+   10
+  ],
+  "values_match": [
+   10,
+   10
+  ],
+  "reuse_valid": [
+   0,
+   0
+  ]
+ },
+ "w1/selective": {
+  "n": 10,
+  "ok_recovered": [
+   8,
+   10
+  ],
+  "values_match": [
+   10,
+   10
+  ],
+  "reuse_valid": [
+   12,
+   12
+  ]
+ },
+ "w1/selective+M1": {
+  "n": 10,
+  "ok_recovered": [
+   8,
+   10
+  ],
+  "values_match": [
+   10,
+   10
+  ],
+  "reuse_valid": [
+   12,
+   12
+  ]
+ },
+ "w1/selective+M1+M3t/M4+gate": {
+  "n": 10,
+  "ok_recovered": [
+   8,
+   10
+  ],
+  "values_match": [
+   10,
+   10
+  ],
+  "reuse_valid": [
+   12,
+   12
+  ]
+ },
+ "w3/restart": {
+  "n": 10,
+  "ok_recovered": [
+   10,
+   10
+  ],
+  "values_match": [
+   10,
+   10
+  ],
+  "reuse_valid": [
+   0,
+   0
+  ]
+ },
+ "w3/rollback": {
+  "n": 10,
+  "ok_recovered": [
+   10,
+   10
+  ],
+  "values_match": [
+   10,
+   10
+  ],
+  "reuse_valid": [
+   0,
+   0
+  ]
+ },
+ "w3/selective": {
+  "n": 10,
+  "ok_recovered": [
+   9,
+   10
+  ],
+  "values_match": [
+   9,
+   10
+  ],
+  "reuse_valid": [
+   0,
+   0
+  ]
+ },
+ "w3/selective+M1": {
+  "n": 10,
+  "ok_recovered": [
+   9,
+   10
+  ],
+  "values_match": [
+   9,
+   10
+  ],
+  "reuse_valid": [
+   0,
+   0
+  ]
+ },
+ "w3/selective+M1+M3t/M4+gate": {
+  "n": 10,
+  "ok_recovered": [
+   9,
+   10
+  ],
+  "values_match": [
+   9,
+   10
+  ],
+  "reuse_valid": [
+   0,
+   0
+  ]
+ },
+ "w4.ipi/restart": {
+  "n": 5,
+  "ok_recovered": [
+   5,
+   5
+  ],
+  "values_match": [
+   5,
+   5
+  ],
+  "reuse_valid": [
+   0,
+   0
+  ]
+ },
+ "w4.ipi/rollback": {
+  "n": 5,
+  "ok_recovered": [
+   5,
+   5
+  ],
+  "values_match": [
+   5,
+   5
+  ],
+  "reuse_valid": [
+   0,
+   0
+  ]
+ },
+ "w4.ipi/selective": {
+  "n": 5,
+  "ok_recovered": [
+   5,
+   5
+  ],
+  "values_match": [
+   5,
+   5
+  ],
+  "reuse_valid": [
+   3,
+   3
+  ]
+ },
+ "w4.ipi/selective+M1": {
+  "n": 5,
+  "ok_recovered": [
+   5,
+   5
+  ],
+  "values_match": [
+   5,
+   5
+  ],
+  "reuse_valid": [
+   3,
+   3
+  ]
+ },
+ "w4.ipi/selective+M1+M3t/M4+gate": {
+  "n": 5,
+  "ok_recovered": [
+   2,
+   5
+  ],
+  "values_match": [
+   5,
+   5
+  ],
+  "reuse_valid": [
+   3,
+   3
+  ]
+ },
+ "w4.byz/restart": {
+  "n": 5,
+  "ok_recovered": [
+   5,
+   5
+  ],
+  "values_match": [
+   5,
+   5
+  ],
+  "reuse_valid": [
+   0,
+   0
+  ]
+ },
+ "w4.byz/rollback": {
+  "n": 5,
+  "ok_recovered": [
+   5,
+   5
+  ],
+  "values_match": [
+   5,
+   5
+  ],
+  "reuse_valid": [
+   0,
+   0
+  ]
+ },
+ "w4.byz/selective": {
+  "n": 5,
+  "ok_recovered": [
+   5,
+   5
+  ],
+  "values_match": [
+   5,
+   5
+  ],
+  "reuse_valid": [
+   5,
+   5
+  ]
+ },
+ "w4.byz/selective+M1": {
+  "n": 5,
+  "ok_recovered": [
+   5,
+   5
+  ],
+  "values_match": [
+   5,
+   5
+  ],
+  "reuse_valid": [
+   5,
+   5
+  ]
+ },
+ "w4.byz/selective+M1+M3t/M4+gate": {
+  "n": 5,
+  "ok_recovered": [
+   5,
+   5
+  ],
+  "values_match": [
+   5,
+   5
+  ],
+  "reuse_valid": [
+   5,
+   5
+  ]
+ }
+}

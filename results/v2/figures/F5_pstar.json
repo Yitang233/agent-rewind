@@ -1,0 +1,260 @@
+{
+ "w1/wall_s": {
+  "clean_overhead_atoms_minus_cot_per_run": [
+   3.5118,
+   1.3960612665638985,
+   5
+  ],
+  "recovery_saving_cot_off_minus_atoms_tuned": [
+   7.1801,
+   2.4806553577633466,
+   6
+  ],
+  "p_star": 0.4891018230943858,
+  "ci95": [
+   0.33291832844471625,
+   0.7295673157402707
+  ],
+  "bounded": true,
+  "share_boot_saving_le_0": 0.0
+ },
+ "w1/decoded": {
+  "clean_overhead_atoms_minus_cot_per_run": [
+   119.0,
+   25.88435821108957,
+   5
+  ],
+  "recovery_saving_cot_off_minus_atoms_tuned": [
+   219.5,
+   66.51541174795507,
+   6
+  ],
+  "p_star": 0.5421412300683371,
+  "ci95": [
+   0.4153846153846154,
+   0.7207606973058637
+  ],
+  "bounded": true,
+  "share_boot_saving_le_0": 0.0
+ },
+ "w3/wall_s": {
+  "clean_overhead_atoms_minus_cot_per_run": [
+   1.9536000000000002,
+   0.7966963066313288,
+   5
+  ],
+  "recovery_saving_cot_off_minus_atoms_tuned": [
+   0.7203833333333335,
+   4.1922420938761,
+   6
+  ],
+  "p_star": 2.71188950327372,
+  "ci95": [
+   0.4942377534387601,
+   Infinity
+  ],
+  "bounded": false,
+  "share_boot_saving_le_0": 0.285
+ },
+ "w3/decoded": {
+  "clean_overhead_atoms_minus_cot_per_run": [
+   48.2,
+   15.449919093639293,
+   5
+  ],
+  "recovery_saving_cot_off_minus_atoms_tuned": [
+   58.5,
+   51.81023064994017,
+   6
+  ],
+  "p_star": 0.823931623931624,
+  "ci95": [
+   0.4675324675324676,
+   2.1555555555555554
+  ],
+  "bounded": true,
+  "share_boot_saving_le_0": 0.0
+ },
+ "w4.ipi/wall_s": {
+  "clean_overhead_atoms_minus_cot_per_run": [
+   -1.2391199999999998,
+   1.2474494887569596,
+   5
+  ],
+  "recovery_saving_cot_off_minus_atoms_tuned": [
+   6.1148,
+   3.2389665574068536,
+   3
+  ],
+  "p_star": 0.0,
+  "ci95": [
+   0.0,
+   0.0
+  ],
+  "bounded": true,
+  "share_boot_saving_le_0": 0.0
+ },
+ "w4.ipi/decoded": {
+  "clean_overhead_atoms_minus_cot_per_run": [
+   -16.8,
+   25.95573154430443,
+   5
+  ],
+  "recovery_saving_cot_off_minus_atoms_tuned": [
+   171.33333333333334,
+   32.88363321370273,
+   3
+  ],
+  "p_star": 0.0,
+  "ci95": [
+   0.0,
+   0.007291666666666666
+  ],
+  "bounded": true,
+  "share_boot_saving_le_0": 0.0
+ },
+ "w4.byz/wall_s": {
+  "clean_overhead_atoms_minus_cot_per_run": [
+   -0.7730599999999999,
+   0.26748682771306725,
+   5
+  ],
+  "recovery_saving_cot_off_minus_atoms_tuned": [
+   9.8643,
+   1.3109359519061181,
+   3
+  ],
+  "p_star": 0.0,
+  "ci95": [
+   0.0,
+   0.0
+  ],
+  "bounded": true,
+  "share_boot_saving_le_0": 0.0
+ },
+ "w4.byz/decoded": {
+  "clean_overhead_atoms_minus_cot_per_run": [
+   -5.6,
+   5.128352561983234,
+   5
+  ],
+  "recovery_saving_cot_off_minus_atoms_tuned": [
+   228.0,
+   9.16515138991168,
+   3
+  ],
+  "p_star": 0.0,
+  "ci95": [
+   0.0,
+   0.0
+  ],
+  "bounded": true,
+  "share_boot_saving_le_0": 0.0
+ },
+ "live_clean": {
+  "w1/cot": {
+   "n": 5,
+   "llm_wall_s": [
+    30.74696,
+    1.1156443622409424
+   ],
+   "decoded": [
+    621.2,
+    21.253235047869772
+   ],
+   "ok_rate": 0.0,
+   "cache_hits": 0
+  },
+  "w1/atoms": {
+   "n": 5,
+   "llm_wall_s": [
+    34.25876,
+    0.39424530815217096
+   ],
+   "decoded": [
+    740.2,
+    7.328028384224504
+   ],
+   "ok_rate": 0.8,
+   "cache_hits": 0
+  },
+  "w3/cot": {
+   "n": 5,
+   "llm_wall_s": [
+    6.045019999999999,
+    1.122135320271134
+   ],
+   "decoded": [
+    119.4,
+    23.50106380570888
+   ],
+   "ok_rate": 0.8,
+   "cache_hits": 0
+  },
+  "w3/atoms": {
+   "n": 5,
+   "llm_wall_s": [
+    7.99862,
+    0.8272725228121625
+   ],
+   "decoded": [
+    167.6,
+    18.994736112934024
+   ],
+   "ok_rate": 1.0,
+   "cache_hits": 0
+  },
+  "w4.ipi/cot": {
+   "n": 5,
+   "llm_wall_s": [
+    13.3609,
+    0.4549106945324547
+   ],
+   "decoded": [
+    267.0,
+    9.192388155425117
+   ],
+   "ok_rate": 1.0,
+   "cache_hits": 0
+  },
+  "w4.ipi/atoms": {
+   "n": 5,
+   "llm_wall_s": [
+    12.12178,
+    1.1327655128048346
+   ],
+   "decoded": [
+    250.2,
+    24.631280924872748
+   ],
+   "ok_rate": 1.0,
+   "cache_hits": 0
+  },
+  "w4.byz/cot": {
+   "n": 5,
+   "llm_wall_s": [
+    12.784780000000001,
+    0.49326366884253686
+   ],
+   "decoded": [
+    254.8,
+    10.686440005914037
+   ],
+   "ok_rate": 1.0,
+   "cache_hits": 0
+  },
+  "w4.byz/atoms": {
+   "n": 5,
+   "llm_wall_s": [
+    12.01172,
+    0.697792499243149
+   ],
+   "decoded": [
+    249.2,
+    15.023315213360865
+   ],
+   "ok_rate": 1.0,
+   "cache_hits": 0
+  }
+ }
+}
