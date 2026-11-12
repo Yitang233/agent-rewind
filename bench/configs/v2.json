@@ -1,0 +1,693 @@
+{
+ "name": "v2",
+ "max_hours": 6.5,
+ "note": "Phase 2 grid. Held-out = repeat_from 2. cache=off everywhere. Order of experiments is the priority order; bench stably sorts cells by model (scripted first if it appears first, then 7b, then 1.5b), so the 1.5B arm and nothing else sits last. Replay settings = bench/configs/replay_tuned.json flags (margin 0.1 chosen after the held-out failure at 0.0; disclosed in runs/v2/preregistration.json). Pre-registered rules: runs/v2/preregistration.json. Budget cuts (estimate 7.82 h -> 6.34 h by runs/v2/pilot_v2/cells.jsonl): E3v2 real tiers, 1.5B arm, E7v2 uniform0.5, E8v2 cot sub-table, E7v2 m3t+cache. The cut experiments are kept under `cut_experiments` (ignored by the runner); move them into `experiments` to run them.",
+ "experiments": [
+  {
+   "exp": "E3v2",
+   "note": "H6 scripted part; seconds per cell, listed first so it cannot be trimmed",
+   "workloads": [
+    {
+     "name": "w2",
+     "params": {
+      "layers": 4,
+      "fan_in": 2,
+      "shared_keys": 3,
+      "position": 0.5,
+      "n": 24
+     }
+    },
+    {
+     "name": "w2",
+     "params": {
+      "layers": 4,
+      "fan_in": 2,
+      "shared_keys": 3,
+      "position": 0.5,
+      "n": 200
+     }
+    },
+    {
+     "name": "w2",
+     "params": {
+      "layers": 4,
+      "fan_in": 2,
+      "shared_keys": 3,
+      "position": 0.5,
+      "n": 1000
+     }
+    }
+   ],
+   "faults": [
+    "auto"
+   ],
+   "methods": [
+    "selective"
+   ],
+   "flags": {
+    "depth": [
+     "agent",
+     "step",
+     "artifact",
+     "field"
+    ],
+    "dirty": [
+     "origin"
+    ]
+   },
+   "models": [
+    "scripted"
+   ],
+   "repeats": 5
+  },
+  {
+   "exp": "E8v2",
+   "note": "H5 atoms, variants 0-4",
+   "workloads": [
+    {
+     "name": "w1",
+     "faults": [
+      "wrong_capacity",
+      "inject_agenda"
+     ]
+    },
+    {
+     "name": "w3",
+     "faults": [
+      "wrong_issue",
+      "stale_code"
+     ]
+    },
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "inject_item"
+     ]
+    },
+    {
+     "name": "w4.byz",
+     "faults": [
+      "byz_factcheck"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "restart",
+     "method": "restart",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "naive"
+     }
+    },
+    {
+     "label": "rollback",
+     "method": "rollback",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "naive"
+     }
+    },
+    {
+     "label": "selective",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "reuse_check": "on"
+     }
+    },
+    {
+     "label": "selective+M1",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff+outbox",
+      "reuse_check": "on",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    },
+    {
+     "label": "selective+M1+M3t/M4+gate",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff+outbox",
+      "reuse_check": "on",
+      "audit": "m3t+m4+gate",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeats": 5
+  },
+  {
+   "exp": "E5v2",
+   "note": "H1 held-out 7B",
+   "workloads": [
+    {
+     "name": "w1",
+     "faults": [
+      "wrong_capacity",
+      "inject_agenda"
+     ]
+    },
+    {
+     "name": "w3",
+     "faults": [
+      "wrong_issue",
+      "stale_code"
+     ]
+    },
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "inject_item"
+     ]
+    },
+    {
+     "name": "w4.byz",
+     "faults": [
+      "byz_factcheck"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "off-cot",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "cot",
+      "effects": "diff",
+      "replay": "off"
+     }
+    },
+    {
+     "label": "prefix-cot",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "cot",
+      "effects": "diff",
+      "replay": "prefix"
+     }
+    },
+    {
+     "label": "resync-tuned-cot",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "cot",
+      "effects": "diff",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    },
+    {
+     "label": "off-atoms",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "replay": "off"
+     }
+    },
+    {
+     "label": "prefix-atoms",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "replay": "prefix"
+     }
+    },
+    {
+     "label": "resync-tuned-atoms",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeat_from": 2,
+   "repeats": 5
+  },
+  {
+   "exp": "E7v2",
+   "note": "H3/H4 held-out",
+   "workloads": [
+    {
+     "name": "w1",
+     "faults": [
+      "wrong_capacity",
+      "inject_agenda",
+      "clean"
+     ]
+    },
+    {
+     "name": "w3",
+     "faults": [
+      "wrong_issue",
+      "clean"
+     ]
+    },
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "inject_item",
+      "clean"
+     ]
+    },
+    {
+     "name": "w4.byz",
+     "faults": [
+      "byz_factcheck",
+      "clean"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "always",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "audit": "always",
+      "effects": "diff"
+     }
+    },
+    {
+     "label": "m3",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "audit": "m3",
+      "effects": "diff"
+     }
+    },
+    {
+     "label": "m3t",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "audit": "m3t",
+      "effects": "diff"
+     }
+    },
+    {
+     "label": "m3t+m4",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "audit": "m3t+m4",
+      "effects": "diff"
+     }
+    },
+    {
+     "label": "m3t+m4+gate",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "audit": "m3t+m4+gate",
+      "effects": "diff+outbox"
+     }
+    },
+    {
+     "label": "uniform0.1",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "audit": "uniform",
+      "effects": "diff",
+      "audit_p": 0.1
+     }
+    },
+    {
+     "label": "uniform0.25",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "audit": "uniform",
+      "effects": "diff",
+      "audit_p": 0.25
+     }
+    },
+    {
+     "label": "m3t+minicheck",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "audit": "m3t",
+      "effects": "diff",
+      "checker": "minicheck"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeat_from": 2,
+   "repeats": 5
+  },
+  {
+   "exp": "E6v2",
+   "note": "H2 live clean runs",
+   "workloads": [
+    "w1",
+    "w3",
+    "w4.ipi",
+    "w4.byz"
+   ],
+   "faults": [
+    "clean"
+   ],
+   "methods": [
+    "none"
+   ],
+   "flags": {
+    "style": [
+     "cot",
+     "atoms"
+    ],
+    "cache": [
+     "off"
+    ]
+   },
+   "models": [
+    "7b"
+   ],
+   "repeats": 5
+  }
+ ],
+ "cut_experiments": [
+  {
+   "exp": "E8v2",
+   "note": "H5 cot sub-table",
+   "workloads": [
+    {
+     "name": "w3",
+     "faults": [
+      "wrong_issue",
+      "stale_code"
+     ]
+    },
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "inject_item"
+     ]
+    },
+    {
+     "name": "w4.byz",
+     "faults": [
+      "byz_factcheck"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "restart",
+     "method": "restart",
+     "flags": {
+      "cache": "off",
+      "style": "cot",
+      "effects": "naive"
+     }
+    },
+    {
+     "label": "selective",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "cot",
+      "effects": "diff",
+      "reuse_check": "on"
+     }
+    },
+    {
+     "label": "selective+M1",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "cot",
+      "effects": "diff+outbox",
+      "reuse_check": "on",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeats": 5
+  },
+  {
+   "exp": "E7v2",
+   "note": "cut arms (budget)",
+   "variants": [
+    {
+     "label": "m3t+cache",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "audit": "m3t+cache",
+      "effects": "diff"
+     }
+    },
+    {
+     "label": "uniform0.5",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "audit": "uniform",
+      "effects": "diff",
+      "audit_p": 0.5
+     }
+    }
+   ],
+   "workloads": [
+    {
+     "name": "w1",
+     "faults": [
+      "wrong_capacity",
+      "inject_agenda",
+      "clean"
+     ]
+    },
+    {
+     "name": "w3",
+     "faults": [
+      "wrong_issue",
+      "clean"
+     ]
+    },
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "inject_item",
+      "clean"
+     ]
+    },
+    {
+     "name": "w4.byz",
+     "faults": [
+      "byz_factcheck",
+      "clean"
+     ]
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeat_from": 2,
+   "repeats": 5
+  },
+  {
+   "exp": "E3v2",
+   "note": "H6 real tiers (first cut)",
+   "workloads": [
+    {
+     "name": "w1",
+     "faults": [
+      "wrong_capacity"
+     ]
+    },
+    {
+     "name": "w3",
+     "faults": [
+      "wrong_issue"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "depth-agent",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "depth": "agent",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    },
+    {
+     "label": "depth-step",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "depth": "step",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    },
+    {
+     "label": "depth-artifact",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "depth": "artifact",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    },
+    {
+     "label": "depth-field",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "depth": "field",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeat_from": 2,
+   "repeats": 5
+  },
+  {
+   "exp": "E5v2",
+   "note": "H1 1.5B micro-benchmark (second model size; first cut after E3 real)",
+   "workloads": [
+    {
+     "name": "w3",
+     "faults": [
+      "wrong_issue",
+      "stale_code"
+     ]
+    },
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "inject_item"
+     ]
+    },
+    {
+     "name": "w4.byz",
+     "faults": [
+      "byz_factcheck"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "off-atoms",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "replay": "off"
+     }
+    },
+    {
+     "label": "resync-tuned-atoms",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    }
+   ],
+   "models": [
+    "1.5b"
+   ],
+   "repeat_from": 2,
+   "repeats": 5
+  }
+ ]
+}

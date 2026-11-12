@@ -1,0 +1,11 @@
+{
+ "name": "E2v2",
+ "max_hours": null,
+ "note": "v1 E2 grid (scripted W2). Recovery seeds only the fault step as dirty; rows carry cone_static, cone_dynamic and rerun_class.",
+ "experiments": [
+  {"exp": "E2", "workloads": [{"name": "w2", "params": {"n": 24, "layers": 4},
+                               "grid": {"fan_in": [1, 2, 3], "shared_keys": [0, 3, 6], "position": [0.1, 0.3, 0.5, 0.7, 0.9]}}],
+   "faults": ["auto"], "methods": ["restart", "rollback", "selective-d2", "selective"], "models": ["scripted"], "repeats": 5,
+   "flags": {"dirty": ["origin"]}}
+ ]
+}

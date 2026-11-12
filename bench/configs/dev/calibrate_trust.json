@@ -1,0 +1,52 @@
+{
+ "name": "calibrate_d4",
+ "max_hours": 0.5,
+ "note": "Calibration: clean tuning-split runs (variants 0-1), m3t in record-only mode (D4_RECORD_ONLY=1), cache off, 7B. Run with --out runs/v2/D4/calib_cells.",
+ "experiments": [
+  {
+   "exp": "E7v2",
+   "workloads": [
+    {
+     "name": "w1",
+     "faults": [
+      "clean"
+     ]
+    },
+    {
+     "name": "w3",
+     "faults": [
+      "clean"
+     ]
+    },
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "clean"
+     ]
+    },
+    {
+     "name": "w4.byz",
+     "faults": [
+      "clean"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "m3t",
+     "method": "selective",
+     "flags": {
+      "style": "atoms",
+      "audit": "m3t",
+      "effects": "diff",
+      "cache": "off"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeats": 2
+  }
+ ]
+}

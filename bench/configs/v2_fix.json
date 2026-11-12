@@ -1,0 +1,85 @@
+{
+ "name": "v2_fix",
+ "max_hours": 1,
+ "note": "Rerun of E8v2 W3 cells after PR #2 fixes (Ledger.undo, unittest -B). Output goes to runs/v2_fix; runs/v2 is untouched. Flags identical to v2.json E8v2.",
+ "experiments": [
+  {
+   "exp": "E8v2",
+   "note": "H5 atoms, variants 0-4, W3 only: rerun after undo-first and unittest -B fixes",
+   "workloads": [
+    {
+     "name": "w3",
+     "faults": [
+      "wrong_issue",
+      "stale_code"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "restart",
+     "method": "restart",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "naive"
+     }
+    },
+    {
+     "label": "rollback",
+     "method": "rollback",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "naive"
+     }
+    },
+    {
+     "label": "selective",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "reuse_check": "on"
+     }
+    },
+    {
+     "label": "selective+M1",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff+outbox",
+      "reuse_check": "on",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    },
+    {
+     "label": "selective+M1+M3t/M4+gate",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff+outbox",
+      "reuse_check": "on",
+      "audit": "m3t+m4+gate",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeats": 5
+  }
+ ]
+}
