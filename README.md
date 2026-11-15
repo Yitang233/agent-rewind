@@ -36,15 +36,21 @@ all follow from that single rule. The same provenance also decides which
 *tokens* a rerun must re-decode (speculative replay against the step's old
 output) and which *audits* must be redone.
 
-We evaluate on four workloads with a local 7B model (2,215 measured cells):
-- Selective recovery reruns 5.0 of 24 steps, where restart reruns 22.5.
-- It halves recovery time on the booking workflow (16.1 s vs 32.4 s).
-- An intent-diff effect layer cuts re-sent irreversible calls from 3.0 to 0.33
-  per recovery.
-- Replay decodes 9–65% of a plain rerun's tokens, but does not reliably save
-  wall time.
-- Scoped audits do not match always-verify detection, though their cached
-  verdicts cut post-recovery audit tokens by 69%.
+We evaluate on four workloads with a local 7B model (574 live cells plus 900
+scripted cells, pre-registered):
+- Selective recovery reruns 4.7 of 24 steps on synthetic DAGs, where restart
+  reruns 22.5 (0 unexplained out-of-cone reruns in 225 cells).
+- On the live workloads, selective recovery with replay cuts recovery wall time
+  from 38.9 s to 9.3 s (W1), 13.5 s to 3.8 s (W4.byz), 13.7 s to 6.8 s (W4.ipi)
+  and 9.4 s to 6.8 s (W3). On W3 selective alone saves nothing (ratio 0.94).
+- Speculative replay decodes 19–64% of a plain rerun's tokens, with a median
+  recovery LLM wall ratio of 0.38–0.70 and 81/81 text-identical calls.
+- Selective recovery re-sends no duplicate effects (restart: 0.6–2.0 per
+  recovery). A gate on irreversible actions leaves 0 unauthorized actions in
+  6/6 injection cells (3/3 and 1/3 without it), but it can hold good work: the
+  W4.ipi full stack recovers 2/5.
+- Trust-aware audits do not beat always-verify (more tokens, false positives
+  on W4.ipi); we report this as a negative result.
 
 ---
 
@@ -264,7 +270,11 @@ are missing.
 | Phase 1 grid (E1–E4) | `python -m agent_rewind.bench --config bench/configs/phase1.json` | 1,563 cells | ≈ 0.5 h |
 | Phase 1 baselines | `python -m agent_rewind.bench --config bench/configs/phase1_baselines.json` | 112 cells | minutes |
 | Full grid (E5–E8, 7B) | `caffeinate -i python -m agent_rewind.bench --config bench/configs/full.json --resume --max-hours 8` | 540 cells | ≈ 2.8 h |
-| Figures and tables | `python scripts/analyze.py` | `runs/figures/` | seconds |
+| Phase 2 grid (E5v2–E8v2, 7B) | `caffeinate -i python -m agent_rewind.bench --config bench/configs/v2.json --resume` | 574 cells (see `results/v2/preregistration.json`) | not timed |
+| Phase 2 scripted E2v2 | `python -m agent_rewind.bench --config bench/configs/e2v2.json` | 900 cells | minutes |
+| Phase 2 W3 rerun after the harness fixes | `python -m agent_rewind.bench --config bench/configs/v2_fix.json --out runs/v2_fix` | 50 cells | not timed |
+| Phase 2 figures and tables | `python scripts/analyze_v2.py` | `runs/v2/figures/` (F1–F8, T1–T3, `analysis_v2.json`; a copy is in [`results/v2/figures/`](results/v2/figures)) | seconds |
+| Phase 1 figures and tables | `python scripts/analyze.py` | `runs/figures/` | seconds |
 | Final report (draft) | `cd report && tectonic main.tex` | `report/main.pdf` | seconds |
 | Phase 1 report | `cd report && tectonic phase1.tex` | `report/phase1.pdf` | seconds |
 
@@ -299,41 +309,47 @@ All real-model numbers use Qwen2.5-7B-Instruct (Q4_K_M) with greedy decoding.
 Values are mean ± sd. Full tables and every caveat are in the
 [report](report/main.pdf).
 
-**Table 1. Claims and verdicts.**
+**Table 1. Claims and verdicts (Phase 2, [`results/v2/RESULTS.md`](results/v2/RESULTS.md)).**
 
 | Claim | Evidence | Verdict |
 |---|---|---|
-| **P1** Reruns follow the dependency cone, not the time-order suffix | Steps rerun of 24 (W2): restart 22.5, rollback 13.3, selective **5.0** | Supported in aggregate (203/225 cells are an exact subset) |
-| **P2** Finer tracking reduces reruns | Steps rerun: agent tier 8.87 → field tier 6.27; no cell worse | Precision supported; bookkeeping trade-off inconclusive |
-| **P3** Intent diff and an outbox make effects safe | Re-sent irreversible calls per W1 recovery: 3.0 → **0.33** | Supported |
-| **C-A** Speculative replay (M1) | Decoded tokens are 9–65% of a plain rerun; output identical on prompts ≤ 512 tokens | Tokens supported; wall time not supported |
-| **C-B** Atom-structured output (M2) | Higher replay acceptance on all four workloads | Acceptance supported; break-even inconclusive |
-| **C-C** Scoped, cached audits (M3) | Detection on W1: 0.40 vs 1.00 for always-verify; re-audit tokens after recovery **−69%** | Detection not supported; cache reuse supported |
-| **C-D** Cone-cost placement (M4) | Audit tokens −77%, but more faults missed | Inconclusive |
+| **H7 / P1** Reruns follow the dependency cone | Steps rerun of 24 (W2, 225 cells per method): restart 22.5, rollback 12.2, selective **4.7**; 0 unexplained out-of-cone reruns | Supported |
+| **H6 / P2** Bookkeeping is cheap | Bookkeeping 0.005% of recovery wall (max 0.057%); journal bytes per step +12–13% from agent to field | Supported |
+| **H1 / C-A** Speculative replay (M1) | Decoded tokens 0.19 / 0.64 / 0.42 / 0.21 of a plain rerun; median recovery LLM wall ratio 0.38 / 0.68 / 0.70 / 0.50 (W1 / W3 / W4.ipi / W4.byz); 81/81 calls identical | Supported (margin 0.1 was chosen after a held-out failure at 0.0) |
+| **H2 / C-B** Atoms break even | p\* by wall time: W1 0.49 [0.33, 0.73], W3 unbounded, W4 0 | Supported as written, weakly (only W1 is non-trivial) |
+| **H3 / C-C** Trust-aware audits (m3t) | Detect injections (3/3) but cost more tokens than always-verify (1588 vs 1263 on W1) and have 0.67 false positives per clean W4.ipi run | **Not supported** |
+| **H4 / C-D** Placement and gate (M4) | m3t+m4 pooled detection 0.53 at 734 tokens, below a budget-matched random baseline (0.84); gate: 0 unauthorized in 6/6 injection cells, 3/3 and 1/3 without | Supported as written, weakly; the gate costs W4.ipi 2/5 recovered |
+| **H5** Selective recovery end to end | Table 2 below: fewer reruns and less wall time on 4 of 4 workloads; 0 duplicate effects against 0.6–2.0 for restart | Supported (W3 marginal) |
 
-**Table 2. End-to-end recovery (E8).** Each row reports steps rerun, recovery
-LLM wall time, decoded tokens and the fraction of runs recovered correctly.
+**Table 2. End-to-end recovery (E8v2, atoms, 7B).** Steps rerun, recovery wall
+time, decoded tokens and the number of cells recovered correctly. W3 rows are a
+rerun after two harness fixes (`runs/v2_fix`).
 
 | Workload | Method | Steps rerun | Wall (s) | Decoded tok. | Recovered |
 |---|---|---:|---:|---:|---:|
-| W1 | restart | 14.0 | 32.4 | 621 | 0.00† |
-| W1 | rollback | 12.5 | 32.4 | 621 | 0.00† |
-| W1 | selective | 4.3 | 16.1 | 316 | 0.00† |
-| W1 | selective + M1 + M2 | 6.3 | **13.8** | **85** | 0.80 |
-| W4.byz | restart | 6.0 | 13.1 | 261 | 1.00 |
-| W4.byz | selective | 4.0 | 13.1 | 261 | 1.00 |
-| W4.byz | selective + M1 + M2 | 2.0 | **7.3** | **16** | 1.00 |
+| W1 | restart | 14.0 | 38.9 | 740 | 8/10 |
+| W1 | selective | 6.3 | 24.6 | 470 | 8/10 |
+| W1 | selective + M1 | 6.3 | **9.3** | **85** | 8/10 |
+| W3 | restart | 5.0 | 9.4 | 168 | 10/10 |
+| W3 | selective | 4.0 | 8.6 | 170 | 9/10 |
+| W3 | selective + M1 | 4.0 | **6.8** | **66** | 9/10 |
+| W4.ipi | restart | 6.0 | 13.7 | 250 | 5/5 |
+| W4.ipi | selective | 3.8 | 11.0 | 202 | 5/5 |
+| W4.ipi | selective + M1 | 3.8 | **6.8** | **71** | 5/5 |
+| W4.ipi | + audits and gate | 3.8 | 8.2 | 71 | 2/5 |
+| W4.byz | restart | 6.0 | 13.5 | 249 | 5/5 |
+| W4.byz | selective | 2.0 | 9.5 | 175 | 5/5 |
+| W4.byz | selective + M1 | 2.0 | **3.8** | **18** | 5/5 |
 
-<sub>† On W1, free chain-of-thought output fails even without a fault (0/5),
-so these rows compare output styles rather than recovery methods. See
-[Limitations](#7-limitations).</sub>
+<sub>W1 `ok_recovered` is 8/10 for every method (repeat 4 fails everywhere, cause
+unexplained). The v1 numbers (2,215 cells) are in the Phase 1 report.</sub>
 
 <div align="center">
-<img src="report/figures/fig1_cone_vs_suffix.png" width="92%" alt="Steps rerun against fault position for restart, rollback and selective recovery">
-<p><em><b>Figure 4.</b> Steps rerun against fault position (E2, synthetic 24-step DAGs). Selective recovery (blue, green) follows the dependency cone (dotted); rollback (orange) follows the time-order suffix (dashed); restart stays near 22.5.</em></p>
+<img src="report/figures/fig1_cone_vs_suffix_v2.png" width="92%" alt="Steps rerun against fault position for restart, rollback and selective recovery">
+<p><em><b>Figure 4.</b> Steps rerun against fault position (E2v2, synthetic 24-step DAGs). Selective recovery (blue, green) follows the dependency cone (dotted); rollback (orange) follows the time-order suffix (dashed); restart stays near 22.5.</em></p>
 
-<img src="report/figures/fig4_replay.png" width="92%" alt="Decoded tokens and wall time of replayed reruns relative to plain reruns">
-<p><em><b>Figure 5.</b> Speculative replay (E5). Top: decoded tokens relative to a plain rerun. Bottom: recovery wall time relative to a plain rerun. Hatched bars use atom-structured output.</em></p>
+<img src="report/figures/fig4_replay_v2.png" width="92%" alt="Decoded tokens and wall time of replayed reruns relative to plain reruns">
+<p><em><b>Figure 5.</b> Speculative replay (E5v2, tuned). Top: decoded tokens relative to a plain rerun. Bottom: recovery wall time relative to a plain rerun. Hatched bars use atom-structured output.</em></p>
 </div>
 
 ---
@@ -359,9 +375,10 @@ agent-rewind/
 │   ├── experiment.py   propagation and policy comparison used by the demo
 │   ├── demo.py         single-workflow demonstration
 │   └── recovery.py, workflow.py, trace.py   compatibility layer from the first prototype
-├── bench/configs/      experiment grids: phase1, phase1_baselines, full
-├── scripts/            analyze.py, phase1_tables.py, bench_llm.py, replay_check.py, ...
+├── bench/configs/      experiment grids: phase1, phase1_baselines, full, v2, e2v2, v2_fix
+├── scripts/            analyze.py, analyze_v2.py, check_cells.py, phase1_tables.py, bench_llm.py, ...
 ├── results/            raw cells and logs behind the Phase 1 report tables
+│   └── v2/             raw cells, rerun, pre-registration, verdicts (RESULTS.md) and figures for the v2 experiments
 ├── tests/              unit, property, replay-equivalence and audit-cache tests
 ├── report/             main.tex (final report), phase1.tex, refs.bib, figures/
 ├── environment.yml     conda environment (agent-rewind)
@@ -377,16 +394,23 @@ Phase 1 report; `python scripts/phase1_tables.py` recomputes its three tables.
 
 ## 7. Limitations
 
-- **Style confound on W1.** Free chain-of-thought fails W1 without any fault
-  (0/5), so W1 correctness compares output styles, not methods.
-- **Replay equivalence is empirical.** Replayed output matched plain greedy
-  decoding in 74/74 cases on prompts of up to 512 tokens. Longer prompts are
-  unverified. On a 7B model, re-verifying near-ties costs about as much
-  wall time as replay saves.
-- **Scale.** The full grid uses only the 7B model, and W4 has 3 repeats. The
-  split-atoms arm and the MiniCheck audit ablation were not run.
-- **Not yet measured.** Tracking overhead on real-model runs, and reuse validity
-  checked by sampled scratch reruns.
+- **W3 is marginal.** After the harness fixes, restart and rollback recover 10/10
+  and selective 9/10; selective alone saves no wall time (ratio 0.94). The one
+  failure (`stale_code`, repeat 0) is an engine ordering bug: a rerun step
+  still reads the faulty run's edit. An opt-in fix (`revert_early`, bench flag
+  `revert`) exists with tests, but the 15 affected cells are not rerun yet.
+- **Missing comparison.** Always-verify appears only as a detector, not as an
+  end-to-end recovery row. The fault-stage sweep exists only on scripted W2
+  (live workloads have 1–2 fixed fault positions), and `timeout` and planner
+  faults are not in the live v2 grid.
+- **Small n and one model.** Held-out groups have n = 3; E8v2 has 5 variants;
+  one 7B model at temperature 0 on one laptop. Reuse validity is 60/60 with an
+  effective n of about 20 and no W3 samples.
+- **Audits and gate.** H3 is not supported, and the gate can hold good work
+  (W4.ipi full stack 2/5 recovered; a clean post held in 2 of 3 clean runs).
+- **Replay equivalence is empirical.** 81/81 calls identical at margin 0.1,
+  which was chosen after a held-out failure at margin 0.0.
+- **Non-LLM state** is a git workspace; there is no browser or VM snapshot.
 - **Irreversible effects** that left before the fault was known can only be
   reported, not recovered.
 

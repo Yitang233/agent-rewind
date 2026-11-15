@@ -1,6 +1,12 @@
 % agent-rewind: project report, Option 5.
 % Format: 10pt on 12pt leading, two columns, Times-like, 7 x 9 in text block, numbered pages.
 % Build: `tectonic main.tex` (or `latexmk -pdf main.tex`) from this folder.
+%
+% v3 SWITCH. The text and numbers of the v3 run (always-verify arm, timeout faults, the two post-hoc fixes, fault
+% stage) are off by default: with the line below commented out this file builds today's report. After
+% `python scripts/analyze_v3.py` has written report/generated/v3.tex from runs/v3, uncomment it.
+% report/main_v3draft.tex builds the same text with DRY values into main_v3draft.pdf (never main.pdf).
+%\def\vthreeon{1}
 \documentclass[10pt,twocolumn,letterpaper]{article}
 
 \usepackage[T1]{fontenc}
@@ -17,6 +23,12 @@
 \usepackage{enumitem}
 \usepackage{microtype}
 \usepackage[hidelinks]{hyperref}
+
+\newif\ifvthree
+\providecommand{\vthreefile}{generated/v3.tex}
+\ifdefined\vthreeon\vthreetrue\input{\vthreefile}\fi
+\newcommand{\vrows}{4}
+\ifvthree\renewcommand{\vrows}{5}\fi
 
 \setlist{nosep,leftmargin=*}
 \setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
@@ -47,17 +59,18 @@ records, for every step, the ordered \emph{(path, Merkle hash)} pairs it read
 from one hierarchical namespace of messages, shared state, files and tool
 results. Recovery re-executes the workflow and reuses every step whose recorded
 reads still verify; early cutoff, precision tiers and dynamic branching follow
-from that single rule. The same provenance then decides which \emph{tokens} a
-rerun must re-decode (speculative replay against the step's old output) and
-which \emph{audits} must be redone. On four workloads with a local 7B model
-(2{,}215 measured cells), selective recovery reruns 5.0 of 24 steps where
-restart reruns 22.5, halves W1 recovery time (16.1\,s vs 32.4\,s), and an
-intent-diff effect layer cuts re-sent irreversible calls from 3.0 to 0.33 per
-recovery. Replay decodes 9--65\% of the tokens of a plain rerun with identical
-output on short prompts, but does not reliably save wall time. Scoped audits do
-\emph{not} match always-verify detection; their cached verdicts do cut
-post-recovery audit tokens by 69\%. We report each claim with the verdict the
-data supports, including the negative ones.
+from that single rule. The same provenance decides which \emph{tokens} a rerun
+must re-decode (speculative replay against the step's old output). On four
+workloads with a local 7B model (574 live and 900 scripted cells, pre-registered),
+selective recovery reruns 4.7 of 24 steps on synthetic DAGs where restart
+reruns 22.5. On the live workloads it cuts recovery wall time from 38.9\,s to
+9.3\,s (W1), 13.5 to 3.8\,s (W4.byz), 13.7 to 6.8\,s (W4.ipi) and 9.4 to 6.8\,s
+(W3), re-sends no duplicate effects (restart: 0.6--2.0 per recovery), and a gate on
+irreversible actions leaves 0 unauthorized actions in 6 of 6 injection cells
+(3 of 3 and 1 of 3 without it). The gate has a cost: it can hold good work.
+Trust-aware audits do \emph{not} beat always-verify, and the selective gain on W3
+is small. We report each claim with the verdict the data supports, including the
+negative ones.
 \end{abstract}
 
 % ---------------------------------------------------------------------------
@@ -95,10 +108,10 @@ LLM agents, whose steps are expensive, non-idempotent and act on the world.
   run's own output as a draft; atom-structured reasoning (M2) makes reruns
   local; scoped, cached audits (M3) and cone-cost audit placement (M4) treat
   verification as graph nodes.
-\item \textbf{An honest evaluation} (\S\ref{sec:eval}) on four workloads, including
+\item \textbf{A pre-registered evaluation} (\S\ref{sec:eval}) on four workloads, including
   two scenarios ported from TAMAS~\cite{kavathekar2025tamas}, with a local
-  7B model on one laptop. Each claim gets a verdict: supported, partly
-  supported, inconclusive, or not supported.
+  7B model on one laptop. Each claim gets a verdict (supported or not), and
+  negative results and post-hoc choices are listed.
 \end{itemize}
 
 % ---------------------------------------------------------------------------
@@ -249,7 +262,7 @@ exceeds the audit cost, with risk from token confidence~\cite{fu2025deepconf}.
 \section{Implementation}
 \label{sec:impl}
 
-\sys{} is about 5{,}600 lines of Python (including tests). The core
+\sys{} is about 7{,}200 lines of Python (including 160 tests). The core
 (\texttt{store}, \texttt{engine}, \texttt{deps}, \texttt{cutoff},
 \texttt{effects}) uses only the standard library, with a SQLite journal. Real
 models run in-process through \texttt{llama-cpp-python} 0.3.36 on Metal, because
@@ -270,7 +283,10 @@ injection (\texttt{w4.ipi}), whose effects are social-media posts.
 
 \paragraph{Platform.} One Apple M5 Pro laptop (24\,GB), Qwen2.5-7B-Instruct
 Q4\_K\_M, greedy decoding. The full grid (540 cells) ran in 2.8\,h with a peak
-RSS of 6.3\,GB and zero errors; Phase~1 added 1{,}675 cells.
+RSS of 6.3\,GB and zero errors; Phase~1 added 1{,}675 cells. The Phase~2 grid
+(\texttt{bench/configs/v2.json}) was pre-registered, ran 574 live cells with
+the cache off plus 900 scripted cells, and had zero errors. W3 recovery rows
+are a rerun after two harness fixes (\S\ref{sec:experience}).
 
 % ---------------------------------------------------------------------------
 \section{Evaluation}
@@ -283,182 +299,197 @@ that floor. Correctness uses \texttt{ok\_recovered}, since W1's irreversible
 e-mails make its final state unrecoverable by design.
 
 \subsection{Propagation (Phase 1)}
-Every injected fault is read downstream (rate 1.0 for all 24 fault$\times$workload
-pairs). Table~\ref{tab:prop} shows that reach varies widely: a wrong W1 capacity
-taints 9 of 14 steps and reaches both the booking and the irreversible e-mail;
-an injected agenda taints only 3 but sends an unauthorised e-mail. Three 7B
-faults are read yet \emph{do not} change the outcome (W3 \texttt{inject\_issue},
-W4 \texttt{byz\_factcheck} on both scenarios); the scripted model propagates
-them all, so non-propagation is a property of the model, and we flag rather
-than count it.
-
-\begin{table}[t]
-\centering\small
-\caption{Fault propagation with the 7B model (E1, $n{=}3$ each).}
-\label{tab:prop}
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{@{}llccc@{}}
-\toprule
-WL & fault (class) & outcome chg. & steps hit & irrev. \\
-\midrule
-W1 & wrong\_capacity (acc.) & 1.00 & 9/14 & 3 \\
-W1 & stale\_capacity (acc.) & 0.67 & 9/14 & 3 \\
-W1 & inject\_agenda (adv.) & 1.00 & 3/14 & 3 \\
-W3 & wrong\_issue (acc.) & 1.00 & 3/5 & 0 \\
-W3 & inject\_issue (adv.) & \textcolor{warn}{0.00} & 3/5 & 0 \\
-W4.byz & byz\_distribute (adv.) & 1.00 & 1/6 & 1 \\
-W4.byz & byz\_factcheck (adv.) & \textcolor{warn}{0.00} & 3/6 & 2 \\
-W4.ipi & inject\_item (adv.) & 0.33 & 4/6 & 1.3 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
+Every injected fault is read downstream (rate 1.0 for all 24
+fault$\times$workload pairs), but reach varies: a wrong W1 capacity taints 9 of
+14 steps and reaches the booking and the irreversible e-mail; an injected
+agenda taints only 3 but sends an unauthorised e-mail. Three 7B faults are read
+yet \emph{do not} change the outcome (W3 \texttt{inject\_issue}, W4
+\texttt{byz\_factcheck} on both scenarios); the scripted model propagates them
+all, so we flag them as non-propagating rather than count them.
 
 \subsection{P1: reruns follow the cone, not the suffix}
 \label{sec:p1}
-On W2 (225 cells per method) restart reruns \pmsd{22.5}{1.2} of 24 steps,
-rollback \pmsd{13.3}{5.9}, and selective \pmsd{5.0}{4.5}, which is
-\pmsd{1.01}{0.68}$\times$ the size of $\mathrm{cone}(f)\cup\{f\}$
-(Fig.~\ref{fig:cone}). Selective tracks the cone at every fault position;
-rollback tracks the suffix, so its advantage over restart vanishes for early
-faults. The subset property holds in 203/225 cells. Of the 22 exceptions, 14
-only add steps that never ran in the faulty run (the fault changed control flow),
-and 13 rerun a step outside the cone, concentrated at shared-key faults.
-\verdict{Verdict: supported as an aggregate, not as an exact subset property.}
+On W2 (E2v2, 225 cells per method, fault position swept 0.1--0.9) restart
+reruns \pmsd{22.5}{1.2} of 24 steps, rollback \pmsd{12.2}{6.0} and selective
+\pmsd{4.7}{4.5} (Fig.~\ref{fig:cone}). Selective tracks the dependency cone at
+every position; rollback tracks the suffix, so its advantage over restart
+vanishes for early faults. There are 0 unexplained out-of-cone reruns: in 14
+cells selective reruns a step outside the static cone, and every such step is
+either new (the fault changed control flow, 18 steps) or downstream of one (12
+steps). Final values equal the clean reference in 225/225 selective cells
+(195/225 for the earlier forward-propagation baseline). The dynamic cone is
+defined from the recorded read hashes, so this is partly tautological; the
+independent check is the clean-run comparison. The stage sweep exists only on
+this scripted workload: live workloads have one or two fixed fault positions.
+\verdict{Verdict: supported (H7).}
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/fig1_cone_vs_suffix.png}
-\caption{P1 (E2, W2 scripted). Steps rerun against fault position. Selective
-recovery (blue/green) follows the dependency cone (dotted); rollback (orange)
-follows the time-order suffix (dashed); restart is flat near 22.5. Mean $\pm$
-sd over 5 repeats, with the other factor pooled; the cone includes the faulty step.}
+\includegraphics[width=\textwidth]{figures/fig1_cone_vs_suffix_v2.png}
+\caption{P1 (E2v2, W2 scripted). Steps rerun against fault position for
+different fan-in and shared-key settings. Selective recovery follows the
+dependency cone; rollback follows the time-order suffix; restart is flat near
+22.5. Mean over 5 repeats.}
 \label{fig:cone}
-\end{figure*}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.62\textwidth]{figures/fig3_effects.png}
-\caption{P3 (E4). Compensations and irreversible calls added during recovery by
-effect policy, for W1 (left) and W2 (right). Rows: irreversible calls added,
-old irreversible effects that cannot be undone (leaked), compensations. Intent
-diff removes most undo-redo churn.}
-\label{fig:effects}
 \end{figure*}
 
 \subsection{P2: precision versus bookkeeping}
 Finer cuts rerun fewer steps on W2: agent \pmsd{8.87}{4.56}, step
-\pmsd{6.67}{4.70}, artifact \pmsd{6.67}{4.70}, field \pmsd{6.27}{4.35}. Paired
-agent-minus-field savings are 2.6 (W2) and 3.4 (W1) steps, and no cell is
-worse. The \emph{canonical} cutoff never helps (807 vs 807 total reruns).
-Bookkeeping cost, however, did not rise measurably with depth in the scripted
-proxy (tracked run 1.34\,ms agent vs 1.22\,ms field), and was not measured on
-real runs. \verdict{Verdict: precision half supported; the trade-off is
-inconclusive.}
+\pmsd{6.67}{4.70}, artifact \pmsd{6.67}{4.70}, field \pmsd{6.27}{4.35}, and the
+\emph{canonical} cutoff never helps (Phase~1). The price is small: journal
+bytes per step grow from 228 to 255 (agent $\to$ field, $n{=}24$; 225 $\to$ 255
+at $n{=}200$), about 12--13\%, and the per-read cost grows with the namespace
+size $n$ (6--7\,$\mu$s at 24, 40--45\,$\mu$s at 200) but not with depth. On
+real runs bookkeeping is \textbf{0.005\%} of recovery wall time (max 0.057\%,
+258 rows). The real-run depth tiers were cut from the grid, so the byte growth
+is a scripted result. \verdict{Verdict: supported (H6).}
 
 \subsection{P3: effect safety}
 \label{sec:effects}
-On W1 (Fig.~\ref{fig:effects}), naive restart compensates 3.0 bookings and re-sends
-3.0 irreversible calls per recovery. With intent diff, compensations drop to
-\pmsd{0.87}{0.92} and re-sent irreversible calls to \pmsd{0.33}{0.49}, the same
-for all three methods (effects are retained by intent key). On W2 the outbox
-matters: re-sent irreversible calls fall $6.2\to1.6\to0.8$ (naive, diff,
-diff+outbox). Effects that had already left the system before the fault was
-known remain \emph{leaked} (0.33 on W1). \verdict{Verdict: supported for
-compensations and re-sent calls; ``zero duplicates'' was not directly counted.}
+On W1 (Phase~1), naive restart compensates 3.0 bookings and re-sends 3.0
+irreversible calls per recovery; with the intent diff these drop to
+\pmsd{0.87}{0.92} and \pmsd{0.33}{0.49}. In the live end-to-end cells restart
+and rollback create 0.6--2.0 duplicate effects per recovery, selective creates
+none. Effects already released before the fault was known stay \emph{leaked}
+(W1: 1.8 per cell under selective, 3.0 under restart). With the trust gate
+(untrusted-origin intents are held at commit), \texttt{unauthorized} is 0 in 6
+of 6 injection cells; without it, 3 of 3 (W1) and 1 of 3 (W4.ipi) cells send an
+unauthorised action. The gate is \emph{not free}: on W4.ipi the full stack
+recovers only 2 of 5 cells because a held post is never released, and it holds
+a clean post in 2 of 3 clean runs. \verdict{Verdict: supported for duplicates and
+unauthorized actions, with a stated cost.}
 
 \subsection{C-A, C-B: replay and structure}
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/fig4_replay.png}
-\caption{C-A (E5, 7B). Top: decoded tokens of a replayed rerun relative to a
-plain rerun. Bottom: recovery LLM wall time relative to a plain rerun. Hatched
-bars use atom-structured output (M2).}
+\includegraphics[width=\textwidth]{figures/fig4_replay_v2.png}
+\caption{C-A (E5v2, 7B, held-out). Decoded tokens and recovery LLM wall time of
+a replayed rerun relative to a plain rerun, for the prefix and the
+resynchronising (tuned) draft.}
 \label{fig:replay}
 \end{figure*}
-Replay with resynchronisation decodes 0.24 (W1), 0.65 (W3), 0.46 (W4.byz) and
-0.45 (W4.ipi) of a plain rerun's tokens with free chain-of-thought, and 0.17,
-0.39, 0.09 and 0.33 with atoms (Fig.~\ref{fig:replay}). In a separate check,
-74/74 replays were token-identical to plain greedy decoding on prompts of at
-most 512 tokens; longer prompts (W3, about 650 tokens) only showed equal output
-lengths and outcomes. Wall time is another story: ratios are 1.06 (W1 CoT),
-1.43 (W3 CoT), 0.65 (W1 atoms) and 0.97 (W3 atoms), because re-verifying
-near-ties on a 7B model costs about as much as it saves. Atoms raise replay
-acceptance on all four workloads (e.g., W4.byz 0.91 vs 0.55), but cost more
-tokens per live call, and the break-even fault rate $p^*$ is bounded only for
-W4.byz (0.15, 95\% CI 0.09--0.22, $n{=}3$).
-\verdict{Verdicts: C-A token saving and equality (short prompts) supported, wall
-time not; C-B acceptance supported, break-even inconclusive.}
+With resynchronisation, a rerun decodes 0.19 (W1), 0.64 (W3), 0.42 (W4.ipi) and
+0.21 (W4.byz) of a plain rerun's tokens. The median recovery LLM wall ratio is
+0.38 [0.35, 0.44], 0.68 [0.56, 0.77], 0.70 [0.52, 0.88] and 0.50 [0.41, 0.67]
+(Fig.~\ref{fig:replay}), and 81/81 replayed calls are text-identical to a plain
+rerun, with equal \texttt{ok\_recovered} in 36/36 pairs. This reverses the Phase~1
+reading that replay does not save wall time: the tuned setting (draft window
+64, local tie re-check) pays for verification only on near-ties. One
+disclosure: the margin of 0.1 was set after a held-out call-level check failed at
+margin 0.0 (18/21 identical on 7B, 17/18 on 1.5B); at 0.1 it is 21/21 and 18/18.
+The break-even fault rate $p^*$ (how often a fault must occur before atoms
+repay their clean-run cost) is 0.49 [0.33, 0.73] by wall time on W1, unbounded
+on W3, and 0 on W4 (atoms cost nothing there); only W1 is a non-trivial result.
+\verdict{Verdicts: C-A supported; C-B supported as written, weakly.}
 
 \subsection{C-C, C-D: audits}
 \begin{table}[t]
 \centering\small
-\caption{Audits as detectors (E7, 7B). Detection with Wilson 95\% CI; tokens
-per faulty run; audit tokens spent re-checking after recovery.}
+\caption{Audits as detectors (E7v2, 7B, held-out $n{=}3$ per cell). Detection,
+false positives per clean run, and audit tokens per faulty run.}
 \label{tab:audit}
-\setlength{\tabcolsep}{3pt}
+\setlength{\tabcolsep}{3.4pt}
 \begin{tabular}{@{}llccc@{}}
 \toprule
-WL & policy & detected & tok/run & re-audit tok \\
+cell & policy & detected & FP/clean & tok \\
 \midrule
-\multirow{4}{*}{W1} & always   & 1.00 [.72,1] & 1239 & 1224 \\
-                    & M3       & 0.40 [.17,.69] & 1211 & 1206 \\
-                    & M3+cache & 0.40 [.17,.69] & 1211 & \textbf{379} \\
-                    & M3+M4    & 0.30 [.11,.60] & \textbf{273} & 147 \\
+\multirow{4}{*}{W1 inject\_agenda} & always & 3/3 & 0.00 & 1263 \\
+  & m3 (no trust) & 0/3 & 0.33 & 1216 \\
+  & m3t & 3/3 & 0.00 & 1588 \\
+  & m3t+m4 & 3/3 & 0.00 & 901 \\
 \midrule
-\multirow{2}{*}{W3} & always   & 1.00 [.57,1] & 589 & 586 \\
-                    & M3+M4    & 0.00 [0,.43] & 0 & 0 \\
+\multirow{3}{*}{W4.ipi inject\_item} & always & 3/3 & 1.67 & 738 \\
+  & m3t & 3/3 & 0.67 & 1188 \\
+  & m3t+m4 & 3/3 & 0.67 & 1082 \\
 \midrule
-\multirow{2}{*}{W4.byz} & always & 1.00 [.44,1] & 656 & 658 \\
-                        & M3+cache & 1.00 [.44,1] & 524 & 171 \\
+\multirow{3}{*}{W3 wrong\_issue} & always & 3/3 & 0.67 & 590 \\
+  & m3t & 0/3 & 0.33 & 762 \\
+  & m3t+m4 & 0/3 & 0.33 & 205 \\
 \bottomrule
 \end{tabular}
 \end{table}
-Scoping alone does not deliver the claimed saving (Table~\ref{tab:audit}): M3
-spends almost as many tokens as always-verify on W1 ($-2\%$) and detects far
-less (0.40 vs 1.00; it misses the injected agenda 0/5). What \emph{does} work is
-treating verdicts as cached graph nodes: after recovery, W1 re-audits drop from
-15.0 to \pmsd{4.7}{3.8} and their tokens by 69\%. Cone-cost placement (M4) cuts
-tokens by 77\% but misses more faults on three of four workloads.
-\verdict{Verdicts: C-C detection not supported, cache reuse supported; C-D
-inconclusive.}
+Trust labels fix detection of the injected agenda (m3 misses it 0/3, m3t finds
+it 3/3, Table~\ref{tab:audit}), but the probe's tokens make m3t dearer than
+always-verify (1588 vs 1263 on W1, 1188 vs 738 on W4.ipi), and on W4.ipi it has
+0.67 false positives per clean run. It also misses wrong values (W3, W4.byz
+0/3), so pooled over 15 fault cells m3t detects 8/15 where always-verify
+detects 15/15. Cone-cost placement (M4) lowers tokens (734 on average, against
+889 for always) at 0.53 detection; a budget-matched random baseline
+interpolated between uniform and always would detect 0.84 at the same budget.
+\verdict{Verdicts: C-C not supported; C-D supported by its written rule, but not
+against the budget-matched baseline.}
 
-\subsection{End-to-end (E8)}
+\subsection{End-to-end (E8v2)}
 \begin{table}[t]
 \centering\small
-\caption{End-to-end recovery (E8, 7B). Steps rerun, recovery LLM wall time,
-decoded tokens and correctness. $^\dagger$W1 free-CoT rows fail even when clean
-(0/5), so W1 correctness compares styles, not methods.}
+\caption{End-to-end recovery (E8v2\ifvthree{} and E8v3\fi, atoms, 7B; W1, W3: 10 cells, W4: 5 cells). Steps rerun,
+recovery wall time, decoded tokens and \texttt{ok\_recovered}. W3 rows are a
+rerun after two harness fixes. M1 is replay, gate the audit-based hold\ifvthree; always-verify audits every atom of
+every rerun step (selective, \texttt{diff} effects; its wall time includes the audits)\fi.}
 \label{tab:e2e}
-\setlength{\tabcolsep}{2.6pt}
+\setlength{\tabcolsep}{2.8pt}
 \begin{tabular}{@{}llcccc@{}}
 \toprule
 WL & method & rerun & wall s & dec. tok & ok \\
 \midrule
-\multirow{4}{*}{W1} & restart   & 14.0 & 32.4 & 621 & 0.00$^\dagger$ \\
-                    & rollback  & 12.5 & 32.4 & 621 & 0.00$^\dagger$ \\
-                    & selective & 4.3 & 16.1 & 316 & 0.00$^\dagger$ \\
-                    & sel.+M1+M2 & 6.3 & \textbf{13.8} & \textbf{85} & 0.80 \\
+\multirow{\vrows}{*}{W1} & restart   & 14.0 & 38.9 & 740 & 8/10 \\
+                    \ifvthree&\vthreeAvWone\fi
+                    & selective & 6.3 & 24.6 & 470 & 8/10 \\
+                    & sel.+M1   & 6.3 & \textbf{9.3} & \textbf{85} & 8/10 \\
+                    & +M3t/M4+gate & 6.3 & 10.3 & 85 & 8/10 \\
 \midrule
-\multirow{3}{*}{W3} & restart   & 5.0 & 6.2 & 121 & 0.80 \\
-                    & selective & 4.0 & 6.3 & 123 & 0.70 \\
-                    & sel.+M1+M2 & 4.0 & 7.8 & 66 & 0.90 \\
+\multirow{\vrows}{*}{W3} & restart   & 5.0 & 9.4 & 168 & 10/10 \\
+                    \ifvthree&\vthreeAvWthree\fi
+                    & selective & 4.0 & 8.6 & 170 & 9/10 \\
+                    & sel.+M1   & 4.0 & \textbf{6.8} & \textbf{66} & 9/10 \\
+                    & +M3t/M4+gate & 4.0 & 7.5 & 66 & 9/10 \\
 \midrule
-\multirow{3}{*}{W4.byz} & restart & 6.0 & 13.1 & 261 & 1.00 \\
-                        & selective & 4.0 & 13.1 & 261 & 1.00 \\
-                        & sel.+M1+M2 & 2.0 & \textbf{7.3} & \textbf{16} & 1.00 \\
+\multirow{\vrows}{*}{W4.ipi} & restart & 6.0 & 13.7 & 250 & 5/5 \\
+                        \ifvthree&\vthreeAvWfouripi\fi
+                        & selective & 3.8 & 11.0 & 202 & 5/5 \\
+                        & sel.+M1 & 3.8 & \textbf{6.8} & \textbf{71} & 5/5 \\
+                        & +M3t/M4+gate & 3.8 & 8.2 & 71 & \textcolor{warn}{2/5} \\
+\midrule
+\multirow{\vrows}{*}{W4.byz} & restart & 6.0 & 13.5 & 249 & 5/5 \\
+                        \ifvthree&\vthreeAvWfourbyz\fi
+                        & selective & 2.0 & 9.5 & 175 & 5/5 \\
+                        & sel.+M1 & 2.0 & \textbf{3.8} & \textbf{18} & 5/5 \\
+                        & +M3t/M4+gate & 2.0 & 4.0 & 18 & 5/5 \\
 \bottomrule
 \end{tabular}
 \end{table}
-Table~\ref{tab:e2e} combines the pieces. On W1, selective recovery reruns 4.3
-of 14 steps and halves recovery time against restart; adding replay and atoms
-cuts decoded tokens from 316 to 85. On W4.byz the full stack reruns 2 of 6 steps
-and decodes 16 tokens instead of 261. W3 is small (5 steps, one LLM call), so
-there is little to save, and correctness differences there are inside the
-one-cell noise floor. Unauthorised actions (W1 \texttt{inject\_agenda}) occur
-once per faulty run under every method: recovery cannot recall an e-mail that
-left before the fault was known, which argues for gating irreversible effects
-on audits \emph{before} release.
+Table~\ref{tab:e2e} combines the pieces. Every method is told the faulty step;
+restart, rollback and selective see the same fault schedule and the same
+(model, cache-off, temperature-0) budget. Selective recovery reruns fewer steps
+on all four workloads and, with replay, cuts recovery wall time by 76\% (W1), 72\%
+(W4.byz), 50\% (W4.ipi) and 28\% (W3) against restart. The median
+selective-to-restart wall ratio without replay is 0.58 [0.33, 1.00] on W1 and
+0.70 and 0.71 on W4; on W3 it is 0.94 [0.80, 1.06], so selective alone saves
+essentially no time there and one fewer cell recovers (9/10, see
+\S\ref{sec:experience}). All 60 sampled reuse decisions were canonical-equal to a
+scratch rerun (Wilson 0.94--1.0, effective $n\approx20$; no samples on W3).
+Correctness is within one cell of restart on all four workloads except the
+full-stack gate arm on W4.ipi. W1 \texttt{ok\_recovered} is 8/10 for \emph{every}
+method (repeat 4 fails everywhere, cause unexplained), so it does not separate
+the methods. \verdict{Verdict: supported (H5), with W3 marginal and the gate arm
+as the exception.}
+
+\ifvthree
+\paragraph{Always-verify, fault kinds, fault stage (E8v3).}
+Selective recovery that audits every atom of every rerun step (always-verify,
+Table~\ref{tab:e2e}) recovers \vthreeAvOkAll{} of \vthreeAvCells{} fault cells, at
+\vthreeAvOverMoneWone, \vthreeAvOverMoneWthree, \vthreeAvOverMoneWfouripi{} and
+\vthreeAvOverMoneWfourbyz$\times$ the wall time of sel.+M1 (W1, W3, W4.ipi,
+W4.byz). A lookup that never returns (\texttt{timeout\_team} on W1,
+\texttt{timeout\_item} on W4.ipi) recovers \vthreeTTeamRestartOk{} and
+\vthreeTItemRestartOk{} with restart, \vthreeTTeamSelMoneOk{} and \vthreeTItemSelMoneOk{}
+with sel.+M1; selective reruns \vthreeTTeamSelRerun{} and \vthreeTItemSelRerun{} steps
+against \vthreeTTeamRestartRerun{} and \vthreeTItemRestartRerun. By fault step on W1
+(of \vthreeStageWoneCapSteps), selective reruns \vthreeStageWoneCapRerun{} (step
+\vthreeStageWoneCapPos), \vthreeStageWoneAgendaRerun{} (step
+\vthreeStageWoneAgendaPos) and \vthreeStageWoneTeamRerun{} (step
+\vthreeStageWoneTeamPos).
+\fi
 
 % ---------------------------------------------------------------------------
 \section{Related Work}
@@ -475,7 +506,10 @@ commits and branching to agent state, recovering in time order; we recover by
 dependency and add effect classes. Sherlock~\cite{ro2025sherlock} places
 verifiers and speculates ahead of them; SagaLLM~\cite{chang2025sagallm} adds
 saga-style compensation to planning; dependency-guided rollback
-repair~\cite{wang2026rollback} targets memory-augmented agents.
+repair~\cite{wang2026rollback} and REVISE~\cite{revise2026} already rerun only the
+dependent steps of an agent DAG, so step-level selective rerun is \emph{not} our
+claim; ours is the combination with shared state and an intent-diff effect layer
+that holds irreversible actions, and provenance reused for decoding.
 \textbf{Systems foundations.} Retro~\cite{kim2010retro} pioneered selective
 re-execution for intrusion recovery; build systems contribute verifying traces
 and early cutoff~\cite{mokhov2018build,mitchell2012shake}; lineage-based
@@ -491,44 +525,76 @@ DeepConf~\cite{fu2025deepconf} inform the audit checker and risk score.
 \label{sec:experience}
 
 \begin{itemize}
-\item \textbf{Free-form CoT is not a clean baseline.} W1 with free
-  chain-of-thought fails 0/5 even without faults, while atoms succeed 4/5. This
-  confounds W1's method comparison with output style; the fix is to rerun
-  restart/rollback/selective with atoms.
+\item \textbf{A harness bug looked like a result.} Our first W3 numbers said
+  restart matched the clean reference in only 4 of 10 cells. The cause was that
+  restart did not undo the faulty edit before rerunning (so researchers read a
+  patched file), and unittest reused a stale \texttt{.pyc} of the same size
+  and second. After the fixes (undo-first, \texttt{-B}) restart and rollback
+  recover 10/10 and selective 9/10, so W3 no longer favours selective.
+\item \textbf{The same ordering problem hides in selective recovery.} The one
+  W3 failure (\texttt{stale\_code}, repeat 0, all three selective arms) is an
+  engine bug: with the \texttt{diff} policy a rerun researcher still lists the
+  faulty run's edit, because that edit is compensated only when
+  \texttt{execute.apply} reruns later; the plan then differs from the clean
+  plan. We implemented an opt-in fix (compensate later steps' effects before a
+  rerun reads the world, re-apply if the step is reused) and a regression
+  test\ifvthree.
+  The 15 \texttt{stale\_code} cells rerun with it (a post-hoc fix, flag
+  \texttt{revert=on}) recover \vthreeStaleAfter{} against \vthreeStaleBefore{} without it (selective alone:
+  \vthreeStaleSelAfter{} against \vthreeStaleSelBefore; restart \vthreeStaleRestart); the table keeps the
+  unfixed rows.\else, but have not yet rerun the 15 affected cells, so the W3 selective rows
+  above are without it.\fi
+\item \textbf{Audits did not win (negative result).} Trust-aware audits detect
+  injections but cost more tokens than always-verify, produce false positives on
+  W4.ipi, and cone-cost placement does not beat a budget-matched random
+  baseline. We report H3 as not supported rather than tuning it.
+\item \textbf{The gate blocks good work.} Holding untrusted-origin actions
+  removes unauthorized actions (0 in 6/6) but never releases a held post, so
+  the W4.ipi full stack recovers 2/5 and holds a clean post in 2 of 3 clean runs.
+  \ifvthree The checker is the cause: a flag on a step recovery reused (its reads
+  unchanged) keeps the post held. A release rule (post hoc, \texttt{release=on})
+  ignores such flags; the same five cells recover \vthreeGateOkOn{} against
+  \vthreeGateOkOff{} (restart \vthreeGateOkRestart) with \vthreeGateUnauth{} unauthorized
+  actions. Clean runs have no recovery: the gate still holds a post in
+  \vthreeGateCleanOn{} of them.
+  \else A release rule after a passing audit is the obvious next step.\fi
 \item \textbf{Floating-point ties break ``lossless'' replay.} Batched and
   sequential evaluation disagree on near-ties; the first replay attempt matched
-  plain decoding only 87.8\% of the time. Re-verifying tokens within a 0.3
-  logit margin restored 74/74 identity, at a wall-time cost that cancels most
-  of M1's savings on a 7B model.
-\item \textbf{Canonical cutoff never fired} beyond exact hashes, because
-  constrained JSON output is already canonical.
-\item \textbf{Budget cuts.} The 1.5B model was unusable on W1 (2/5 clean), so
-  the full grid is 7B only; W4 has 3 repeats; the split-atoms arm and the
-  MiniCheck ablation were not run. Injected atom faults keep their original
-  confidence, so M4's risk score cannot see them.
-\item \textbf{Not yet measured:} tracking overhead on real runs and reuse
-  validity by sampled scratch reruns; both are Phase~2 work.
+  plain decoding only 87.8\% of the time. A local re-verification within a
+  small logit margin restored identity (81/81), with the margin chosen after a
+  held-out failure.
+\item \textbf{Limits.} One 7B model, temperature 0, one laptop; held-out groups
+  have $n{=}3$ and E8v2 has 5 variants, so intervals are wide. Live workloads
+  have 1--2 fixed fault positions (the stage sweep is scripted W2 only), and the
+  \ifvthree planner faults of the teammates' pull request are not in this repository, so they are not in the grid.
+  \else fault kinds timeout and planner faults are not in the live grid. An
+  end-to-end always-verify row is missing from Table~\ref{tab:e2e}: always-verify
+  appears only as a detector (Table~\ref{tab:audit}). \fi Reuse validity has
+  no W3 samples. Browser and VM state were not built; non-LLM state is a git
+  workspace.
 \end{itemize}
 
 % ---------------------------------------------------------------------------
 \section{Conclusion}
 Recording what each agent step actually read, as hashes in one namespace, turns
 recovery into re-execution against a verifying trace. On a laptop-scale study
-this reruns the dependency cone instead of the suffix, halves recovery time on
-the booking workflow and removes most duplicated side effects. Pushing the same
-provenance inside a step saves decoded tokens but not reliably wall time, and
-scoping audits to provenance saves re-audits after recovery but does not replace
-always-verify as a detector. The clearest lesson is about irreversible effects:
-no recovery method can recall them, so verification belongs on the backward
-cone of an effect, before it leaves the outbox.
+this reruns the dependency cone instead of the suffix; with replay it cuts
+recovery wall time by 28--76\% on four workloads and removes duplicated side
+effects. Scoping audits to provenance does not replace always-verify as a
+detector. The clearest lesson is about irreversible effects: no recovery method
+can recall them, so a gate before release is what prevents unauthorized
+actions, at the price of holding some good work back.
 
 \paragraph{Acknowledgments.} This work was carried out as a course project for
 CSE 291A, \emph{Systems for LLMs and AI Agents}, at UC San Diego (Fall 2026).
 Code and data: \url{https://github.com/Yitang233/agent-rewind}.
 
+% references are left out of the page count when \vmeasure is defined
+\ifdefined\vmeasure\else
 {\footnotesize
 \bibliographystyle{abbrv}
 \bibliography{refs}
 }
+\fi
 
 \end{document}
