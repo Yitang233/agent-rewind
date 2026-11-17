@@ -32,7 +32,8 @@ instruction / extra recipient beyond plain information (score = log P("yes")). A
     m3t+m4      as m3+m4, with risk(a) = max(conf_risk, 1 if a cites an untrusted path)
     m3t+m4+gate as m3t+m4, and an irreversible intent whose backward cone holds a flagged atom is held in the outbox
                 (see `Auditor.gate`; effects.Ledger.commit takes the hook). After a recovery it is released when the new
-                cone is clean, otherwise it stays held.
+                cone is clean, otherwise it stays held. With release=on a flag on a step the recovery reused no longer
+                holds it (`Auditor.gate(recovered=...)`).
 """
 from __future__ import annotations
 
@@ -398,12 +399,20 @@ class Auditor:
                and v["probe"] > self.tau_inj and v["step"] in feeds}
         return sorted(set(bad) | hit)
 
-    def gate(self, run):
+    def gate(self, run, recovered=None):
         """Hook for effects.Ledger.commit: hold(rec, intent) is True when the backward cone of the intent's step
-        (the step and every earlier step whose writes it reads, transitively) holds a flagged atom."""
+        (the step and every earlier step whose writes it reads, transitively) holds a flagged atom.
+
+        `recovered` (the release rule, flag release=on): the steps the recovery recomputed. Only a flag on one
+        of them counts. A flag on a reused step is left out: selective recovery verified that step's read hashes
+        against the recovered run, so what it read did not change and the fault did not reach it (the faulty
+        identity is given to every method). The same flag was already there in the faulty run and in a clean run
+        (a checker false positive), so it says nothing about the recovery. Such flags stay in `summary`."""
         if not self.policy.endswith("+gate"):
             return None
         flagged = {n.split("/")[0] for n in self.flags(run)}
+        if recovered is not None:
+            flagged &= set(recovered)
         recs = list(run.last().values())
         back: dict[str, set[str]] = {r.step: set() for r in recs}
         for i, b in enumerate(recs):

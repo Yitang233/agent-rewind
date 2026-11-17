@@ -1,0 +1,277 @@
+{
+ "name": "v3",
+ "max_hours": null,
+ "note": "Always-verify arm, timeout faults, the W3 stale_code rerun with the early-revert fix (revert=on, post hoc) and the gate release rule (release=on, post hoc; 5 fault + 3 clean W4.ipi cells). Output goes to runs/v3; runs/v2 is untouched. 'always-verify' = selective recovery with an always-audit of every atom (audit tokens counted); restart/rollback/selective/+M1 rows for the same fault cells come from E8v2 (W3: runs/v2_fix) under the identical schedule (same variant seeds, same flags). E8v3g fault cells compare with E8v2's gate arm; its clean cells with E7v2's clean cells (repeats 2-4).",
+ "experiments": [
+  {
+   "exp": "E8v3",
+   "note": "step 7: always-verify arm on the six E8v2 fault cells, 6 x 5 = 30 cells",
+   "workloads": [
+    {
+     "name": "w1",
+     "faults": [
+      "wrong_capacity",
+      "inject_agenda"
+     ]
+    },
+    {
+     "name": "w3",
+     "faults": [
+      "wrong_issue",
+      "stale_code"
+     ]
+    },
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "inject_item"
+     ]
+    },
+    {
+     "name": "w4.byz",
+     "faults": [
+      "byz_factcheck"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "always-verify",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "reuse_check": "on",
+      "audit": "always"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeats": 5
+  },
+  {
+   "exp": "E8v3f",
+   "note": "step 8: accidental faults not in v2 (timeout_team on W1, timeout_item on W4.ipi); all five E8v2 arms plus always-verify, 2 x 6 x 5 = 60 cells. Planner faults (teammates' PR #5) are not in this repo.",
+   "workloads": [
+    {
+     "name": "w1",
+     "faults": [
+      "timeout_team"
+     ]
+    },
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "timeout_item"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "restart",
+     "method": "restart",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "naive"
+     }
+    },
+    {
+     "label": "rollback",
+     "method": "rollback",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "naive"
+     }
+    },
+    {
+     "label": "selective",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "reuse_check": "on"
+     }
+    },
+    {
+     "label": "selective+M1",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff+outbox",
+      "reuse_check": "on",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    },
+    {
+     "label": "selective+M1+M3t/M4+gate",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff+outbox",
+      "reuse_check": "on",
+      "audit": "m3t+m4+gate",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local"
+     }
+    },
+    {
+     "label": "always-verify",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "reuse_check": "on",
+      "audit": "always"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeats": 5
+  },
+  {
+   "exp": "E8v3r",
+   "note": "W3 stale_code rerun with revert=on (engine fix); the three selective arms of v2_fix, 3 x 5 = 15 cells",
+   "workloads": [
+    {
+     "name": "w3",
+     "faults": [
+      "stale_code"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "selective",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff",
+      "reuse_check": "on",
+      "revert": "on"
+     }
+    },
+    {
+     "label": "selective+M1",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff+outbox",
+      "reuse_check": "on",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local",
+      "revert": "on"
+     }
+    },
+    {
+     "label": "selective+M1+M3t/M4+gate",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff+outbox",
+      "reuse_check": "on",
+      "audit": "m3t+m4+gate",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local",
+      "revert": "on"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeats": 5
+  },
+  {
+   "exp": "E8v3g",
+   "note": "step 10: W4.ipi full-stack gate arm with the release rule (release=on, a post-hoc fix), the five E8v2 fault cells; compare with the same arm in E8v2 (release off). 5 cells",
+   "workloads": [
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "inject_item"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "selective+M1+M3t/M4+gate+release",
+     "method": "selective",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "effects": "diff+outbox",
+      "reuse_check": "on",
+      "audit": "m3t+m4+gate",
+      "replay": "resync",
+      "layout": "v1",
+      "replay_K": 64,
+      "margin": 0.1,
+      "tie": "local",
+      "release": "on"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeats": 5
+  },
+  {
+   "exp": "E8v3g",
+   "note": "clean runs of the same gate, repeats 2-4 with the E7v2 clean specs (+ release=on, which cannot act without a recovery): shows the clean-run holds the rule cannot fix. 3 cells",
+   "workloads": [
+    {
+     "name": "w4.ipi",
+     "faults": [
+      "clean"
+     ]
+    }
+   ],
+   "variants": [
+    {
+     "label": "m3t+m4+gate+release",
+     "method": "none",
+     "flags": {
+      "cache": "off",
+      "style": "atoms",
+      "audit": "m3t+m4+gate",
+      "effects": "diff+outbox",
+      "release": "on"
+     }
+    }
+   ],
+   "models": [
+    "7b"
+   ],
+   "repeats": 5,
+   "repeat_from": 2
+  }
+ ]
+}

@@ -241,3 +241,43 @@ class OutOfConeReruns(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RerunReadsCleanWorld(unittest.TestCase):
+    """W3: a rerun step that reads the world must not see the faulty run's compensable effects."""
+
+    def faulty(self):
+        from agent_rewind.workloads import codefix as cf
+        case = cf.make(0)
+        self.addCleanup(case.close)
+        f = case.faults["stale_code"]
+        ov = {(f.step, case.workflow.path(f.name)): f.value,
+              ("plan", cf.PLAN + "/file"): "cart.py",
+              ("plan", cf.PLAN + "/old"): "return 0.0 if total >= 50 else 5.0",
+              ("plan", cf.PLAN + "/new"): "return 0.0 if total > 50 else 5.0"}
+        run = execute(case.workflow, case.world, CachedLLM(case.scripted()), effects="diff", overrides=ov)
+        return cf, case, f, run
+
+    def test_selective_rerun_reads_clean_world(self):
+        cf, case, f, faulty = self.faulty()
+        rec = execute(case.workflow, case.world, CachedLLM(case.scripted()), prior=faulty,
+                      dirty={"research.code"}, policy="selective", revert_early=True)
+        self.assertIn("    return 0.0 if total >= 50 else 5.0", rec.store.get(rec.branch, cf.CODE_PATH))
+        self.assertTrue(cf.check(case.world))
+        self.assertEqual(rec.report["effects"]["compensated"], 1)
+
+    def test_off_by_default(self):
+        cf, case, f, faulty = self.faulty()
+        rec = execute(case.workflow, case.world, CachedLLM(case.scripted()), prior=faulty,
+                      dirty={"research.code"}, policy="selective")
+        self.assertIn("    return 0.0 if total > 50 else 5.0", rec.store.get(rec.branch, cf.CODE_PATH))
+
+    def test_reverted_effect_is_reapplied_when_its_step_is_reused(self):
+        cf, case, f, faulty = self.faulty()
+        rec = execute(case.workflow, case.world, CachedLLM(case.scripted()), prior=faulty, dirty={"research.code"},
+                      policy="selective", revert_early=True,
+                      overrides={(f.step, case.workflow.path(f.name)): f.value})
+        self.assertIn("execute.apply", rec.report["reused"])
+        with open(case.world._path("cart.py")) as fh:
+            self.assertIn("total > 50", fh.read())
+        self.assertEqual(rec.report["effects"]["compensated"], 0)

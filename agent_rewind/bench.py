@@ -26,6 +26,10 @@ runs/<name>_dry/. Flags:
                                                               the gate needs effects=diff+outbox)
     checker llama | minicheck      which model scores audits (minicheck: runs/v2/D5/calibration.json; absent unless set)
     cutoff  exact | canonical      effects  naive | diff | diff+outbox      depth  agent|step|artifact|field
+v3 flags (absent from a cell's spec unless a config sets them):
+    revert  off | on       compensate a later step's faulty-run effects before a rerun step reads the world (engine revert_early)
+    release off | on       recovery with an audit +gate: a flag on a step the recovery reused no longer holds an irreversible
+                           intent (audit.Auditor.gate(recovered=...)); rows then carry recovery.gate.released_at_commit, residual_flags
 Hygiene flags. They are absent from a cell's spec unless a config sets them, so v1 cell keys are unchanged:
     cache        on | off        off: every phase (clean reference, faulty, recovery, audits) decodes live: no SQLite
                                  prompt cache, no in-run call memo, no checker memo. Default on.
@@ -76,8 +80,12 @@ NEW_DEFAULTS = {"cache": "on", "reuse_check": "off", "audit_p": 1.0, "dirty": "p
                 # replay settings; the defaults are the v1 behaviour of LlamaCppLLM
                 "layout": "v1", "replay_K": 32, "margin": 0.3, "tie": "full",
                 # audit checker: llama (the workflow model) or minicheck (lytang/MiniCheck-Flan-T5-Large)
-                "checker": "llama"}
-CHOICES = {"cache": ("on", "off"), "reuse_check": ("on", "off"), "dirty": ("producers", "origin"),
+                "checker": "llama",
+                # v3: compensate a later step's faulty-run effects before a rerun step reads the world (engine.execute)
+                "revert": "off",
+                # v3: after a recovery a flag on a reused step no longer holds an irreversible intent (audit.Auditor.gate)
+                "release": "off"}
+CHOICES = {"revert": ("off", "on"), "release": ("off", "on"), "cache": ("on", "off"), "reuse_check": ("on", "off"), "dirty": ("producers", "origin"),
            "layout": ("v1", "stable"), "tie": ("full", "local"), "checker": ("llama", "minicheck")}
 
 
@@ -550,6 +558,8 @@ def run_cell(spec: dict, models: Models) -> dict:
         trust = aud_policy in AU.TRUST_POLICIES
         if aud_policy.endswith("+gate") and fl["effects"] != "diff+outbox":
             raise ValueError("audit policy m3t+m4+gate needs effects=diff+outbox")
+        if flag(fl, "release") == "on" and not aud_policy.endswith("+gate"):
+            raise ValueError("release=on needs an audit policy with +gate")
         if trust:
             kw["untrusted"] = list(case.meta.get("untrusted", ()))
         if real and aud_policy != "none":
@@ -639,7 +649,8 @@ def run_cell(spec: dict, models: Models) -> dict:
             t0, tot0 = time.perf_counter(), _totals(inner)
             rec = execute(wf, world, llm_r, prior=faulty, dirty=dirty, policy=spec["method"],
                           audit=auditor(faulty) if aud_policy != "none" else None, cutoff=mc_r, meter=meter_r,
-                          untrusted=kw.get("untrusted", ()))
+                          untrusted=kw.get("untrusted", ()), revert_early=flag(fl, "revert") == "on",
+                          release_gate=flag(fl, "release") == "on")
             wall = time.perf_counter() - t0
             c1 = _checker_counts(models, real)
             d = _delta(tot0, _totals(inner))
@@ -669,6 +680,10 @@ def run_cell(spec: dict, models: Models) -> dict:
                 row["recovery"]["gate"] = {"held": len(rep["held"]), "held_steps": list(rep["held_steps"]),
                                            "released_after_recovery": rel, "leaked": rep["effects"]["leaked"],
                                            "withdrawn": rep["effects"]["withdrawn"], "effects": rep["effects"]}
+                if flag(fl, "release") == "on":      # only with the release rule, so rows of other cells keep their keys
+                    row["recovery"]["gate"]["released_at_commit"] = rep["effects"]["released"]
+                    row["recovery"]["gate"]["residual_flags"] = [n for n in rec.report["audit"]["flagged"]
+                                                                 if n.split("/")[0] not in rep["rerun"]]
             row["irreversible_calls_total"] = n_irreversible(world)
             if real:
                 inner.replay, inner.drafts = "off", {}

@@ -239,7 +239,7 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
             depth: int | None = None, overrides: dict | None = None, early_cutoff: bool = True,
             store: Store | None = None, after_step: Callable | None = None, cutoff=None,
             effects: str | None = None, commit: bool = True, untrusted=(), verified_paths=(),
-            meter=None, audit=None) -> Run:
+            meter=None, audit=None, revert_early: bool = False, release_gate: bool = False) -> Run:
     """Run `workflow` on a new branch of the store. See the module docstring.
 
     overrides   {(step, path): value} replaces what a step writes (fault injection).
@@ -249,6 +249,12 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
     cutoff      'exact' | 'canonical' | a cutoff.Canonical; inherited from `prior`. Reads and
                 writes are hashed with it, so it is the early-cutoff tier.
     effects     'naive' | 'diff' | 'diff+outbox' (effects.py); inherited from `prior`, else naive.
+    revert_early  selective policies only: before a rerun step reads the world, compensate the faulty
+                run's compensable effects of the steps after it, and apply them again if the step is reused
+                (effects.Ledger._revert_later). Off by default: it changes what a rerun step reads, so the
+                pre-registered runs/v2 cells were made without it.
+    release_gate  recovery only, with an audit gate: a flag on a step the recovery reused does not hold an
+                irreversible intent (audit.Auditor.gate). Off by default; runs/v2 was made without it.
     commit      False leaves staged irreversible intents in the outbox (a run that has not
                 reached its commit point); a later recovery can withdraw them without a leak.
     untrusted / verified_paths  seeds for the trust labels (inbound messages, audited nodes).
@@ -267,6 +273,7 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
     cutoff = _cutoff.get(cutoff)
     effects = effects or (prior.effects if prior is not None else "naive")
     ledger = Ledger(world, effects, untrusted, verified_paths)
+    ledger.revert_early = revert_early
     if prior is not None:        # labels of the prior run's writes are rebuilt by replay and rerun
         ledger.untrusted = set(untrusted)
     env = Env(cutoff, ledger, meter)
@@ -293,6 +300,7 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
 
     def rerun(step: Step, old: StepRecord | None, ctx: StepContext | None) -> StepRecord:
         ctx = ctx or StepContext(store, branch, world, llm, step, overrides, depth, env)
+        ledger.later = [prior_recs[n] for n in names[names.index(step.name) + 1:] if n in prior_recs]
         ledger.begin(ctx, old)
         rec = run_step(step, store, branch, world, llm, overrides, depth, ctx, rerun_of=old.step if old else None)
         ledger.end(ctx, old)
@@ -346,7 +354,10 @@ def execute(workflow, world: World, llm, prior: Run | None = None, dirty=(), pol
                 run.orphans.append(name)
 
     if commit:
-        ledger.commit(run.last().values(), audit.gate(run) if audit is not None and hasattr(audit, "gate") else None)
+        gate = None
+        if audit is not None and hasattr(audit, "gate"):
+            gate = audit.gate(run, report["rerun"] if release_gate and prior is not None else None)
+        ledger.commit(run.last().values(), gate)
 
     fresh = [r for r in run.records if not r.reused]
     report["compensated"] = ledger.stats["compensated"]

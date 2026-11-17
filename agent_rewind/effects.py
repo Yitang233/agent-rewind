@@ -56,6 +56,7 @@ class Intent:
     held: bool = False           # blocked at commit by the trust rule
     withdrawn: bool = False      # dropped before release
     untrusted: bool = False      # label of its backward cone
+    reverted: bool = False       # compensated early so a rerun step reads the world without it; not yet decided
 
     @property
     def effect_class(self) -> str:   # name used by the earlier Effect objects
@@ -93,6 +94,8 @@ class Ledger:
         self.held: list[str] = []
         self.held_steps: list[str] = []      # steps of the held intents (same order)
         self.redone: list[str] = []          # tools of irreversible effects that were made again
+        self.revert_early = False
+        self.later: list = []                # prior records of the steps after the one being rerun
 
     # ---- trust labels ---------------------------------------------------------------
     def is_untrusted(self, path: str) -> bool:
@@ -112,6 +115,7 @@ class Ledger:
         cls = EFFECT_CLASS[tool]
         key = intent_key(ctx.step, tool, args)
         if cls == "read":
+            self._revert_later()
             result = self.world.call(tool, _key=key, **args)
             if tool in _open_world():
                 ctx.tainted = True
@@ -125,6 +129,8 @@ class Ledger:
             if old is not None:
                 ctx.prior_used.add(key)
                 new = replace(old, held=False, untrusted=ctx.tainted)
+                if new.reverted:
+                    self._reapply(new)
                 ctx.intents.append(new)
                 ctx.local[key] = new
                 self.stats["retained"] += 1
@@ -139,6 +145,25 @@ class Ledger:
         ctx.intents.append(it)
         ctx.local[key] = it
         return it.result
+
+    # ---- early revert (selective recovery) ---------------------------------------------
+    def _revert_later(self) -> None:
+        """A rerun step is about to read the world. Selective recovery has not yet decided the steps after
+        it, so their compensable effects from the faulty run are still in the world (a patched file the
+        researcher would list). Compensate them now, newest first, and mark them `reverted`: a step that
+        is then reused, or an effect the rerun makes again, applies it again; one that is dropped settles
+        as compensated without a second call. Naive reruns undo everything first (`undo`)."""
+        if self.policy == "naive" or not self.revert_early:
+            return
+        for rec in reversed(self.later):
+            for it in reversed(rec.intents):
+                if it.cls == "compensable" and not it.undone and not it.withdrawn and not it.reverted:
+                    self.world.compensate(it.tool, it.result)
+                    it.reverted = True
+
+    def _reapply(self, it) -> None:
+        it.result = self.world.call(it.tool, _key=it.key, **it.args)
+        it.reverted = False
 
     # ---- around one step run ----------------------------------------------------------
     def begin(self, ctx, old) -> None:
@@ -168,7 +193,10 @@ class Ledger:
                 continue
             if act == "compensate" and (it.tool, it.result) in targets:
                 continue
-            if act == "compensate" and not it.undone:
+            if act == "compensate" and it.reverted:
+                it.reverted, it.undone = False, True
+                self.stats["compensated"] += 1
+            elif act == "compensate" and not it.undone:
                 self.world.compensate(it.tool, it.result)
                 self.stats["compensated"] += 1
             elif act == "leak":
@@ -190,6 +218,9 @@ class Ledger:
     def replay(self, old) -> list[Intent]:
         self.set_label([p for p, _ in old.writes], old.untrusted)
         out = [replace(i) for i in old.intents]
+        for i in out:
+            if i.reverted:
+                self._reapply(i)
         self.stats["retained"] += sum(i.cls != "read" for i in out)
         return out
 
