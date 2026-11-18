@@ -1,4 +1,4 @@
-# v3 results (not run yet)
+# v3 results (run 2026-11-22, 113 cells, 0 error rows)
 
 `bench/configs/v3.json` is the last model run of Phase 2 (113 cells, 7B, cache off, about 1.4 h). It adds the
 always-verify arm and the timeout faults, and tests two post-hoc fixes. Until it has run this folder holds only this

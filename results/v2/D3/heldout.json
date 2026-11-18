@@ -1,0 +1,686 @@
+{
+ "7b": {
+  "{\"K\": 64, \"margin\": 0.0, \"mode\": \"resync\", \"tie\": \"local\"}": {
+   "identical": 18,
+   "calls": 21,
+   "wall_s": 71.51159970709705,
+   "plain_wall_s": 157.75330229190877,
+   "ratio": 0.4533128541092031,
+   "decoded": 823,
+   "plain_decoded": 2807,
+   "ties": 0,
+   "reeval": 0,
+   "mismatches": [
+    {
+     "case": "7b_w1_2_v1_atoms.json",
+     "call": 4,
+     "step": "execute.email.2",
+     "first_diff": 69,
+     "plain_top2_gap": 0.036376953125
+    },
+    {
+     "case": "7b_w1_3_v1_atoms.json",
+     "call": 1,
+     "step": "execute.email.0",
+     "first_diff": 69,
+     "plain_top2_gap": 0.06621932983398438
+    },
+    {
+     "case": "7b_synth_0_v1_atoms.json",
+     "call": 0,
+     "step": "synth",
+     "first_diff": 92,
+     "plain_top2_gap": 0.07608413696289062
+    }
+   ],
+   "by_workload": {
+    "synth": {
+     "ratio": 0.775933196354788,
+     "per_case_ratio": [
+      0.776
+     ],
+     "identical": [
+      0,
+      1
+     ],
+     "prompt_tokens": [
+      1607
+     ]
+    },
+    "w1": {
+     "ratio": 0.3511732263963326,
+     "per_case_ratio": [
+      0.364,
+      0.268,
+      0.425
+     ],
+     "identical": [
+      15,
+      17
+     ],
+     "prompt_tokens": [
+      205,
+      206,
+      367,
+      368
+     ]
+    },
+    "w3": {
+     "ratio": 0.6901032045093697,
+     "per_case_ratio": [
+      0.726,
+      0.651,
+      0.692
+     ],
+     "identical": [
+      3,
+      3
+     ],
+     "prompt_tokens": [
+      678,
+      679,
+      692
+     ]
+    }
+   }
+  },
+  "{\"K\": 64, \"margin\": 0.1, \"mode\": \"resync\", \"tie\": \"local\"}": {
+   "identical": 21,
+   "calls": 21,
+   "wall_s": 88.61359883393743,
+   "plain_wall_s": 157.75330229190877,
+   "ratio": 0.5617226235300334,
+   "decoded": 870,
+   "plain_decoded": 2807,
+   "ties": 4,
+   "reeval": 409,
+   "mismatches": [],
+   "by_workload": {
+    "synth": {
+     "ratio": 1.0483725695685366,
+     "per_case_ratio": [
+      1.048
+     ],
+     "identical": [
+      1,
+      1
+     ],
+     "prompt_tokens": [
+      1607
+     ]
+    },
+    "w1": {
+     "ratio": 0.4152943425596178,
+     "per_case_ratio": [
+      0.464,
+      0.361,
+      0.429
+     ],
+     "identical": [
+      17,
+      17
+     ],
+     "prompt_tokens": [
+      205,
+      206,
+      367,
+      368
+     ]
+    },
+    "w3": {
+     "ratio": 0.8924055335035547,
+     "per_case_ratio": [
+      1.324,
+      0.664,
+      0.684
+     ],
+     "identical": [
+      3,
+      3
+     ],
+     "prompt_tokens": [
+      678,
+      679,
+      692
+     ]
+    }
+   }
+  },
+  "{\"K\": 32, \"margin\": 0.3, \"mode\": \"resync\", \"tie\": \"full\"}": {
+   "identical": 21,
+   "calls": 21,
+   "wall_s": 122.40190633403836,
+   "plain_wall_s": 157.75330229190877,
+   "ratio": 0.7759070938974341,
+   "decoded": 870,
+   "plain_decoded": 2807,
+   "ties": 10,
+   "reeval": 7969,
+   "mismatches": [],
+   "by_workload": {
+    "synth": {
+     "ratio": 2.3684491521761624,
+     "per_case_ratio": [
+      2.368
+     ],
+     "identical": [
+      1,
+      1
+     ],
+     "prompt_tokens": [
+      1607
+     ]
+    },
+    "w1": {
+     "ratio": 0.5680894832118769,
+     "per_case_ratio": [
+      0.813,
+      0.408,
+      0.525
+     ],
+     "identical": [
+      17,
+      17
+     ],
+     "prompt_tokens": [
+      205,
+      206,
+      367,
+      368
+     ]
+    },
+    "w3": {
+     "ratio": 0.9171190000856093,
+     "per_case_ratio": [
+      1.411,
+      0.646,
+      0.687
+     ],
+     "identical": [
+      3,
+      3
+     ],
+     "prompt_tokens": [
+      678,
+      679,
+      692
+     ]
+    }
+   }
+  },
+  "{\"K\": 32, \"margin\": 0.3, \"mode\": \"resync\", \"tie\": \"local\"}": {
+   "identical": 21,
+   "calls": 21,
+   "wall_s": 101.8438529149862,
+   "plain_wall_s": 157.75330229190877,
+   "ratio": 0.6455893565164995,
+   "decoded": 870,
+   "plain_decoded": 2807,
+   "ties": 10,
+   "reeval": 688,
+   "mismatches": [],
+   "by_workload": {
+    "synth": {
+     "ratio": 1.2754230863818061,
+     "per_case_ratio": [
+      1.275
+     ],
+     "identical": [
+      1,
+      1
+     ],
+     "prompt_tokens": [
+      1607
+     ]
+    },
+    "w1": {
+     "ratio": 0.5096105195858518,
+     "per_case_ratio": [
+      0.656,
+      0.389,
+      0.509
+     ],
+     "identical": [
+      17,
+      17
+     ],
+     "prompt_tokens": [
+      205,
+      206,
+      367,
+      368
+     ]
+    },
+    "w3": {
+     "ratio": 0.8879477508438837,
+     "per_case_ratio": [
+      1.308,
+      0.655,
+      0.695
+     ],
+     "identical": [
+      3,
+      3
+     ],
+     "prompt_tokens": [
+      678,
+      679,
+      692
+     ]
+    }
+   }
+  }
+ },
+ "1.5b": {
+  "{\"K\": 64, \"margin\": 0.0, \"mode\": \"resync\", \"tie\": \"local\"}": {
+   "identical": 17,
+   "calls": 18,
+   "wall_s": 10.363254499010509,
+   "plain_wall_s": 56.976813041983405,
+   "ratio": 0.18188547139999456,
+   "decoded": 551,
+   "plain_decoded": 1916,
+   "ties": 0,
+   "reeval": 0,
+   "mismatches": [
+    {
+     "case": "1.5b_w3_2_v1_atoms.json",
+     "call": 0,
+     "step": "plan",
+     "first_diff": 24,
+     "plain_top2_gap": 0.0046405792236328125
+    }
+   ],
+   "by_workload": {
+    "w3": {
+     "ratio": 0.25636373188543704,
+     "per_case_ratio": [
+      0.281,
+      0.254,
+      0.237
+     ],
+     "identical": [
+      2,
+      3
+     ],
+     "prompt_tokens": [
+      678,
+      679,
+      692
+     ]
+    },
+    "w4.byz": {
+     "ratio": 0.1270244682454179,
+     "per_case_ratio": [
+      0.097,
+      0.139,
+      0.139
+     ],
+     "identical": [
+      7,
+      7
+     ],
+     "prompt_tokens": [
+      255,
+      258,
+      260,
+      267,
+      296,
+      299,
+      301
+     ]
+    },
+    "w4.ipi": {
+     "ratio": 0.1681102959640086,
+     "per_case_ratio": [
+      0.112,
+      0.148,
+      0.232
+     ],
+     "identical": [
+      8,
+      8
+     ],
+     "prompt_tokens": [
+      255,
+      258,
+      260,
+      264,
+      272,
+      296,
+      299,
+      301
+     ]
+    }
+   }
+  },
+  "{\"K\": 64, \"margin\": 0.1, \"mode\": \"resync\", \"tie\": \"local\"}": {
+   "identical": 18,
+   "calls": 18,
+   "wall_s": 17.284953834023327,
+   "plain_wall_s": 56.976813041983405,
+   "ratio": 0.30336821087706145,
+   "decoded": 569,
+   "plain_decoded": 1916,
+   "ties": 11,
+   "reeval": 238,
+   "mismatches": [],
+   "by_workload": {
+    "w3": {
+     "ratio": 0.4642675538880743,
+     "per_case_ratio": [
+      0.442,
+      0.576,
+      0.399
+     ],
+     "identical": [
+      3,
+      3
+     ],
+     "prompt_tokens": [
+      678,
+      679,
+      692
+     ]
+    },
+    "w4.byz": {
+     "ratio": 0.2149664648256125,
+     "per_case_ratio": [
+      0.204,
+      0.222,
+      0.216
+     ],
+     "identical": [
+      7,
+      7
+     ],
+     "prompt_tokens": [
+      255,
+      258,
+      260,
+      267,
+      296,
+      299,
+      301
+     ]
+    },
+    "w4.ipi": {
+     "ratio": 0.24798923198244463,
+     "per_case_ratio": [
+      0.204,
+      0.218,
+      0.315
+     ],
+     "identical": [
+      8,
+      8
+     ],
+     "prompt_tokens": [
+      255,
+      258,
+      260,
+      264,
+      272,
+      296,
+      299,
+      301
+     ]
+    }
+   }
+  },
+  "{\"K\": 32, \"margin\": 0.3, \"mode\": \"resync\", \"tie\": \"full\"}": {
+   "identical": 18,
+   "calls": 18,
+   "wall_s": 36.51942045905162,
+   "plain_wall_s": 56.976813041983405,
+   "ratio": 0.6409523191853896,
+   "decoded": 569,
+   "plain_decoded": 1916,
+   "ties": 29,
+   "reeval": 15348,
+   "mismatches": [],
+   "by_workload": {
+    "w3": {
+     "ratio": 1.064158990824531,
+     "per_case_ratio": [
+      0.651,
+      1.578,
+      1.023
+     ],
+     "identical": [
+      3,
+      3
+     ],
+     "prompt_tokens": [
+      678,
+      679,
+      692
+     ]
+    },
+    "w4.byz": {
+     "ratio": 0.4489982557188598,
+     "per_case_ratio": [
+      0.565,
+      0.514,
+      0.216
+     ],
+     "identical": [
+      7,
+      7
+     ],
+     "prompt_tokens": [
+      255,
+      258,
+      260,
+      267,
+      296,
+      299,
+      301
+     ]
+    },
+    "w4.ipi": {
+     "ratio": 0.46078400037274797,
+     "per_case_ratio": [
+      0.549,
+      0.517,
+      0.331
+     ],
+     "identical": [
+      8,
+      8
+     ],
+     "prompt_tokens": [
+      255,
+      258,
+      260,
+      264,
+      272,
+      296,
+      299,
+      301
+     ]
+    }
+   }
+  },
+  "{\"K\": 32, \"margin\": 0.3, \"mode\": \"resync\", \"tie\": \"local\"}": {
+   "identical": 18,
+   "calls": 18,
+   "wall_s": 25.041654413973447,
+   "plain_wall_s": 56.976813041983405,
+   "ratio": 0.43950605653428676,
+   "decoded": 569,
+   "plain_decoded": 1916,
+   "ties": 29,
+   "reeval": 1014,
+   "mismatches": [],
+   "by_workload": {
+    "w3": {
+     "ratio": 0.5072373150759205,
+     "per_case_ratio": [
+      0.437,
+      0.55,
+      0.533
+     ],
+     "identical": [
+      3,
+      3
+     ],
+     "prompt_tokens": [
+      678,
+      679,
+      692
+     ]
+    },
+    "w4.byz": {
+     "ratio": 0.4033523435151485,
+     "per_case_ratio": [
+      0.473,
+      0.472,
+      0.215
+     ],
+     "identical": [
+      7,
+      7
+     ],
+     "prompt_tokens": [
+      255,
+      258,
+      260,
+      267,
+      296,
+      299,
+      301
+     ]
+    },
+    "w4.ipi": {
+     "ratio": 0.41529287022100514,
+     "per_case_ratio": [
+      0.458,
+      0.476,
+      0.315
+     ],
+     "identical": [
+      8,
+      8
+     ],
+     "prompt_tokens": [
+      255,
+      258,
+      260,
+      264,
+      272,
+      296,
+      299,
+      301
+     ]
+    }
+   }
+  }
+ },
+ "tie_recheck_full_vs_local": {
+  "7b": {
+   "cases": 7,
+   "full": [
+    21,
+    21
+   ],
+   "local": [
+    21,
+    21
+   ],
+   "reeval_full": 7969,
+   "reeval_local": 688,
+   "t_tie_full": 45.97176970797591,
+   "t_tie_local": 25.150770165986614,
+   "ties_full": 10,
+   "ties_local": 10
+  },
+  "1.5b": {
+   "cases": 9,
+   "full": [
+    18,
+    18
+   ],
+   "local": [
+    18,
+    18
+   ],
+   "reeval_full": 15348,
+   "reeval_local": 1014,
+   "t_tie_full": 20.219448418094544,
+   "t_tie_local": 8.771106289932504,
+   "ties_full": 29,
+   "ties_local": 29
+  }
+ },
+ "guard": {
+  "stable/w1": {
+   "ok": 1,
+   "n": 5,
+   "failed": [
+    {
+     "variant": 0,
+     "error": null
+    },
+    {
+     "variant": 1,
+     "error": null
+    },
+    {
+     "variant": 3,
+     "error": null
+    },
+    {
+     "variant": 4,
+     "error": null
+    }
+   ]
+  },
+  "stable/w3": {
+   "ok": 4,
+   "n": 5,
+   "failed": [
+    {
+     "variant": 0,
+     "error": null
+    }
+   ]
+  },
+  "stable/w4.ipi": {
+   "ok": 5,
+   "n": 5,
+   "failed": []
+  },
+  "stable/w4.byz": {
+   "ok": 5,
+   "n": 5,
+   "failed": []
+  },
+  "v1/w1": {
+   "ok": 4,
+   "n": 5,
+   "failed": [
+    {
+     "variant": 4,
+     "error": null
+    }
+   ]
+  },
+  "v1/w3": {
+   "ok": 5,
+   "n": 5,
+   "failed": []
+  },
+  "v1/w4.ipi": {
+   "ok": 5,
+   "n": 5,
+   "failed": []
+  },
+  "v1/w4.byz": {
+   "ok": 5,
+   "n": 5,
+   "failed": []
+  }
+ },
+ "note": "Held-out = variants 2-4 (+ one synthetic 1,607-token prompt, 7B). Call-level replay of recorded recovery sequences (cold KV at the start of each sequence); wall = sum of LLM call wall; identity = token ids equal to the plain arm of the same sequence. cfg with margin 0.0 is the tuning rule's pick; margin 0.1 is the frozen one."
+}

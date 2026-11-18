@@ -1,0 +1,24 @@
+{
+ "bars": {
+  "stale_code sel. v2_fix": [
+   4,
+   5
+  ],
+  "stale_code sel. revert=on*": [
+   5,
+   5
+  ],
+  "W4.ipi gate release off": [
+   2,
+   5
+  ],
+  "W4.ipi gate release on*": [
+   4,
+   5
+  ],
+  "W4.ipi restart": [
+   5,
+   5
+  ]
+ }
+}
