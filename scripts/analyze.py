@@ -21,7 +21,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _common import ROOT, rec_llm  # noqa: E402,F401
 RUNS = ROOT / "runs"
 OUT = RUNS / "figures"
 P1 = RUNS / "phase1" / "cells.jsonl"
@@ -271,10 +272,6 @@ def fig3(p1):
 def e5_pairs(full):
     E5 = [r for r in full if r["spec"]["exp"] == "E5"]
     return E5
-
-
-def rec_llm(r):
-    return r["recovery"]["llm"]
 
 
 def fig4(full):

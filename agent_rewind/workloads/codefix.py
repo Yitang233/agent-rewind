@@ -322,7 +322,7 @@ def workflow() -> Workflow:
 
 @dataclass
 class Case:
-    """What bench.py runs: a workflow, a fresh world, named faults, a task checker, a scripted model."""
+    """What agent_rewind.bench runs: a workflow, a fresh world, named faults, a task checker, a scripted model."""
     name: str
     workflow: Workflow
     world: World

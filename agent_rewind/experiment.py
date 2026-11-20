@@ -1,4 +1,4 @@
-"""Phase 1 propagation measurement and recovery comparison under identical fault schedules."""
+"""Phase 1 interface (entry point: `python -m agent_rewind.demo`): propagation measurement and recovery comparison under identical fault schedules."""
 from __future__ import annotations
 
 import copy

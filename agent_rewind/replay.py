@@ -4,7 +4,7 @@ The model checks K old tokens in one batched forward pass; the longest prefix on
 (grammar-masked) greedy choice agrees is accepted, the cache is cropped at the first
 disagreement, and the model's own token replaces the old one. Under greedy decoding the result
 equals a plain token-by-token decode (up to floating-point differences between batched and
-sequential evaluation, which `scripts/replay_check.py` measures).
+sequential evaluation, which `scripts/dev/replay_check.py` measures).
 
     replay=off      plain decode (no draft)
     replay=prefix   verify the old output until the first mismatch, then decode normally

@@ -1,4 +1,4 @@
-"""python -m agent_rewind.demo [--fault LABEL|all] [--llm scripted|ollama:<model>] [--out runs]"""
+"""Phase 1 demo (README Quick Start): python -m agent_rewind.demo [--fault LABEL|all] [--llm scripted|ollama:<model>] [--out runs]"""
 from __future__ import annotations
 
 import argparse

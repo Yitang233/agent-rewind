@@ -24,8 +24,8 @@ from dataclasses import asdict, dataclass, field, replace
 from typing import Callable
 
 from . import cutoff as _cutoff
-from .effects import Intent, Ledger, POLICIES as EFFECT_POLICIES
-from .store import BOT, Store, canon, cut, digest, overlaps, split
+from .effects import Intent, Ledger
+from .store import Store, canon, cut, digest, overlaps, split
 from .world import World
 
 POLICIES = ("restart", "rollback", "selective", "selective-d2")

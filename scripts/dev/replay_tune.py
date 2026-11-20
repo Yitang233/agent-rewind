@@ -15,16 +15,14 @@ arm sees the same state. Greedy decoding throughout; identity is token-id equali
 """
 import argparse
 import gc
-import hashlib
 import json
 import os
 import resource
-import statistics
 import sys
 import time
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-ROOT = os.path.join(os.path.dirname(__file__), "..")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 OUT = os.path.join(ROOT, "runs/v2/D3")
 CASES = os.path.join(OUT, "cases")
 FAULT = {"w1": "wrong_capacity", "w3": "wrong_issue", "w4.ipi": "inject_item", "w4.byz": "byz_factcheck"}

@@ -4,9 +4,9 @@ For each fault (wrong, stale, malicious) x style (atoms, cot) on one model: run 
 then recover with the fix three times from a copy of the faulty state, with replay = off (plain),
 prefix, resync. Every LLM rerun is one row of runs/S4/replay.jsonl; identity is token equality of
 the rerun's output with the plain arm's output for the same step (only counted when both saw the
-same prompt). Summary: runs/S4/summary.json (python scripts/replay_check.py --summarize).
+same prompt). Summary: runs/S4/summary.json (python scripts/dev/replay_check.py --summarize).
 
-Usage: caffeinate -i python scripts/replay_check.py --model 1.5b --styles atoms cot --faults wrong stale malicious
+Usage: caffeinate -i python scripts/dev/replay_check.py --model 1.5b --styles atoms cot --faults wrong stale malicious
 """
 import argparse
 import copy
@@ -18,7 +18,7 @@ import resource
 import sys
 import time
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from agent_rewind.engine import execute                       # noqa: E402
 from agent_rewind.faults import Fault                         # noqa: E402
 from agent_rewind.llm import CachedLLM, LlamaCppLLM           # noqa: E402
@@ -26,7 +26,7 @@ from agent_rewind.recovery import recover                     # noqa: E402
 from agent_rewind.workloads import booking                    # noqa: E402
 from agent_rewind.world import World                          # noqa: E402
 
-ROOT = os.path.join(os.path.dirname(__file__), "..")
+ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 OUT = os.path.join(ROOT, "runs/S4")
 FAULTS = {
     "wrong": Fault("wrong", "wrong", "research.capacity", "fact.capacity.A", 12),

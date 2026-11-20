@@ -6,13 +6,19 @@ steps cost no tokens and repeated experiments are cheap.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 import re
 import urllib.request
 
 from . import atoms as A
-from .trace import digest
+
+
+def digest(value) -> str:
+    """Cache key of a model call: 12 hex of the sha256 of its canonical JSON (not store.digest, which hashes text)."""
+    return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()[:12]
+
 
 TASK_PROMPTS = {
     "answer": "Report the looked-up value for the question. Reply {\"value\": <value>}.",

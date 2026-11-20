@@ -1,7 +1,7 @@
 """Micro-benchmark for llama-cpp-python: prefill/decode speed, draft
 verification equivalence, KV crop. Prints and optionally writes JSON.
 
-Usage: python scripts/bench_llm.py --model PATH [--out FILE.json]
+Usage: python scripts/dev/bench_llm.py --model PATH [--out FILE.json]
 """
 import argparse
 import gc

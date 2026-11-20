@@ -1,4 +1,4 @@
-"""Compatibility: `recover()` is now a thin call into `engine.execute`.
+"""Phase 1 interface: `recover()` is a thin call into `engine.execute` (used by experiment.py, tests, scripts/dev/replay_check.py).
 
 restart       -- rerun every step
 rollback      -- rerun the first faulty step and everything after it

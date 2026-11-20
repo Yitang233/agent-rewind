@@ -18,11 +18,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import analyze as AN  # noqa: E402  (helpers; its main() is not run)
-from analyze import PAL, by, ms, wilson  # noqa: E402
+from analyze import PAL, ms, wilson  # noqa: E402
 
 import matplotlib.pyplot as plt  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
+from _common import ROOT, rec_llm  # noqa: E402,F401
 V2 = ROOT / "runs" / "v2"
 OUT = V2 / "figures"
 CELLS = V2 / "cells.jsonl"
@@ -265,10 +265,6 @@ def h6_f2(e3, e5, e8, e6):
 
 
 # ------------------------------------------------------------------------------ E5v2: H1 / F4 / T3
-def rec_llm(r):
-    return r["recovery"]["llm"]
-
-
 def e5_index(e5):
     d = {}
     for r in e5:
