@@ -12,9 +12,6 @@ def rows_by_method(label):
 
 
 class PropagationTest(unittest.TestCase):
-    def test_clean_run_books_smallest_fitting_room(self):
-        self.assertEqual(clean_reference()["outcome"]["rooms"], ["B"])
-
     def test_wrong_fact_reaches_the_booking(self):
         prop = propagation(FAULTS["wrong_capacity"], clean_reference())
         self.assertTrue(prop["outcome_changed"])

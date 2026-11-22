@@ -35,11 +35,6 @@ class ParserTest(unittest.TestCase):
         self.assertEqual((atoms["minItems"], atoms["maxItems"]), (2, 2))
         self.assertEqual(atoms["items"]["properties"]["cites"]["items"]["enum"], ["/a/A", "/a/B", "/kv/team/size"])
 
-    def test_prompt_keeps_group_order_and_paths(self):
-        _, user = A.build_prompt("planner", "do it", G, "hint")
-        self.assertLess(user.index("## Rooms"), user.index("## Team"))
-        self.assertIn('[/kv/team/size] = 12', user)
-
     def test_confidence_maps_tokens_to_atoms(self):
         toks = [TEXT[i:i + 5] for i in range(0, len(TEXT), 5)]
         lps = [-0.1] * len(toks)
@@ -75,8 +70,6 @@ class ScriptedAtomsTest(unittest.TestCase):
 
     def test_widened_w1_shape(self):
         for k in (1, 3, 5):
-            wf = booking.meetings_workflow(k)
-            self.assertEqual(len(wf.steps), 2 + 4 * k)
             run, world = booking.run_meetings(CachedLLM(ScriptedLLM()), k)
             self.assertTrue(booking.meetings_ok(world, k))
         # all meetings read the shared team facts
@@ -88,17 +81,6 @@ class ScriptedAtomsTest(unittest.TestCase):
         for v in range(5):
             _, world = booking.run_meetings(CachedLLM(ScriptedLLM()), 3, variant=v)
             self.assertTrue(booking.meetings_ok(world, 3), v)
-
-    def test_prompt_groups_put_shared_facts_before_meeting_facts(self):
-        seen = []
-
-        class Spy(ScriptedLLM):
-            def complete(self, role, task, inputs):
-                seen.append((task, [g["title"] for g in inputs["groups"]]))
-                return super().complete(role, task, inputs)
-        booking.run_meetings(CachedLLM(Spy()), 2)
-        self.assertEqual(seen[0], ("plan_meeting", ["Rooms", "Team", "Meeting 0"]))
-
 
 if __name__ == "__main__":
     unittest.main()

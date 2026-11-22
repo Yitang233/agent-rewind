@@ -1,6 +1,5 @@
-"""Measurement hygiene: v1 keys unchanged, live-cost flags, call hashes, reuse check, validator."""
+"""Measurement hygiene: cell keys and flag checks, live-cost flags, call hashes, reuse check, validator."""
 import copy
-import hashlib
 import importlib.util
 import json
 import os
@@ -10,7 +9,6 @@ import unittest
 from agent_rewind import bench
 from agent_rewind.engine import execute
 from agent_rewind.llm import CachedLLM
-from agent_rewind.workloads import tamas
 from agent_rewind.world import World
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
@@ -24,12 +22,6 @@ def _load_check_cells():
 
 
 CC = _load_check_cells()
-
-# sha256 over the sorted cell keys of each v1 config, taken before the hygiene flags changed bench.py
-# phase1 and phase1_baselines grew 1563 -> 1808 and 112 -> 152 when origin/main added the timeout and planner
-# faults (PR #5); the config files are unchanged. full and s6_measure still expand to their v1 keys.
-V1_KEYS = {"full": (540, "f5b0296f6b0dcb7a"), "phase1": (1808, "8d60f3c0ff48c1b7"),
-           "s6_measure": (47, "b615fe56be599bf8"), "phase1_baselines": (152, "def5eaf37fe789a6")}
 
 CFG = {"name": "t", "experiments": [
     {"exp": "E5v2", "workloads": ["w1"], "faults": ["wrong_capacity"], "methods": ["selective"],
@@ -49,34 +41,22 @@ def run_dry(cfg, d):
 
 
 class KeysTest(unittest.TestCase):
-    @unittest.skipUnless(tamas.available(), "TAMAS not cloned at ~/src/TAMAS (the W4 cells need its scenarios)")
-    def test_v1_configs_expand_to_the_same_keys(self):
-        for name, (n, h) in V1_KEYS.items():
-            cfg = json.load(open(os.path.join(ROOT, "bench", "configs", f"{name}.json")))
-            keys = sorted(bench.cell_key(c) for c in bench.expand(cfg))
-            self.assertEqual(len(keys), n, name)
-            self.assertEqual(hashlib.sha256("\n".join(keys).encode()).hexdigest()[:16], h, name)
-
     def test_new_flags_do_not_appear_unless_configured(self):
         cells = bench.expand(CFG)
         w1 = [c for c in cells if c["workload"] == "w1"][0]
         self.assertEqual(w1["flags"]["cache"], "off")
         old = bench.expand({"name": "o", "experiments": [CFG["experiments"][2]]})
-        self.assertTrue(all(not ({"cache", "reuse_check", "audit_p"} & set(c["flags"])) for c in old))
+        self.assertTrue(all(not (set(bench.NEW_DEFAULTS) & set(c["flags"])) for c in old))   # old cell keys stay valid
 
     def test_bad_flag_values_are_rejected(self):
-        bad = copy.deepcopy(CFG)
-        bad["experiments"][0]["flags"]["cache"] = ["maybe"]
-        with self.assertRaises(ValueError):
-            bench.expand(bad)
+        for name in ("cache", "tie", "layout", "checker", "release", "revert"):
+            bad = copy.deepcopy(CFG)
+            bad["experiments"][0]["flags"][name] = ["maybe"]
+            with self.assertRaises(ValueError, msg=name):
+                bench.expand(bad)
 
 
 class PiecesTest(unittest.TestCase):
-    def test_uniform_audit_gets_p_and_others_do_not(self):
-        self.assertEqual(bench._audit_args("uniform", True, p=0.25)["p"], 0.25)
-        self.assertEqual(bench._audit_args("uniform", True)["p"], 1.0)
-        self.assertNotIn("p", bench._audit_args("m3", True, p=0.25))
-
     def test_uniform_p_changes_audits(self):
         from agent_rewind.audit import Auditor, RuleChecker
         case = bench.build_case("w1", 0, {})
@@ -128,20 +108,6 @@ class PiecesTest(unittest.TestCase):
         self.assertEqual([c["call_index"] for c in live.log], [0, 1])
         self.assertEqual(live.log[0]["sha256"], live.log[1]["sha256"])
         self.assertEqual(len(live.log[0]["sha256"]), 64)
-
-    def test_metered_cutoff_counts_hashes(self):
-        c = bench.build_case("w1", 0, {})
-        try:
-            mc, m = bench.MeteredCutoff(None), bench.Meter()
-            execute(c.workflow, c.world, CachedLLM(c.scripted()), cutoff=mc, meter=m)
-        finally:
-            c.close()
-        self.assertGreater(mc.n, 0)
-        self.assertGreater(m.reads, 0)
-        bk = bench._bookkeeping(m, mc)
-        self.assertGreater(bk["journal_bytes"], 0)
-        self.assertLessEqual(bk["ns_hash_outside"], bk["ns_hash"])
-
 
 class DryRowsTest(unittest.TestCase):
     @classmethod

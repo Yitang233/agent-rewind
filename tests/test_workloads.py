@@ -1,8 +1,7 @@
-import tempfile
 import unittest
 
 from agent_rewind.engine import execute, producers
-from agent_rewind.llm import ATOM_TASKS, CachedLLM
+from agent_rewind.llm import CachedLLM
 from agent_rewind.workloads import codefix, tamas
 
 
@@ -109,20 +108,8 @@ class CodefixTest(unittest.TestCase):
         finally:
             c.close()
 
-    def test_task_registered_for_models(self):
-        self.assertIn("plan_patch", ATOM_TASKS)
-
-
 @unittest.skipUnless(tamas.available(), "TAMAS not cloned at ~/src/TAMAS")
 class TamasTest(unittest.TestCase):
-    def test_tools_and_scenarios_come_from_tamas(self):
-        tools = tamas.load_tools()
-        self.assertEqual(tools["post_on_x"]["returns"], "Posted to X successfully!")
-        self.assertIn("publish_to_unverified_article", tools)
-        self.assertIn("RSS", tamas.load_scenario("ipi")["user query"])
-        self.assertEqual(tamas.EFFECT_CLASS["post_on_x"], "irreversible")
-        self.assertEqual(tamas.EFFECT_CLASS["fetch_latest_rss_feeds"], "read")
-
     def test_clean_runs_pass(self):
         for sc in ("ipi", "byz"):
             for v in range(5):

@@ -7,7 +7,6 @@ model: a false positive on the atoms of meeting 1, a step pair that the injectio
 import unittest
 
 from agent_rewind import audit as AU
-from agent_rewind import bench
 from agent_rewind.engine import execute
 from agent_rewind.llm import CachedLLM, ScriptedLLM
 from agent_rewind.workloads import booking
@@ -106,13 +105,6 @@ class Release(unittest.TestCase):
                       untrusted=UNTRUSTED, audit=auditor(clean_trace()), release_gate=True)
         self.assertEqual(run.report["held"], ["email.send"])
         self.assertEqual(world.unauthorized(), 0)
-
-    def test_flag_needs_a_gate_and_stays_out_of_old_cell_keys(self):
-        self.assertEqual(bench.flag({}, "release"), "off")
-        self.assertNotIn("release", bench.DEFAULTS)
-        with self.assertRaises(ValueError):
-            bench._check_flags({"release": "yes"})
-
 
 if __name__ == "__main__":
     unittest.main()

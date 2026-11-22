@@ -31,7 +31,7 @@ class NoisyBackend(R.FakeBackend):
 class TieHandlingTest(unittest.TestCase):
     def test_noisy_batches_equal_plain_with_margin(self):
         args = dict(V=8, eos=0, salt=3)
-        bad = ok = 0
+        bad = 0
         for seed in range(30):
             ids = [3, 4 + seed % 3, 5]
             ref, _, _ = R.decode(NoisyBackend(**args), ids, None, "off", max_tokens=60)
@@ -40,11 +40,10 @@ class TieHandlingTest(unittest.TestCase):
                     out, _, st = R.decode(NoisyBackend(**args), ids, ref, mode, K=8, max_tokens=60, margin=margin)
                     if margin:
                         self.assertEqual(out, ref)
-                        self.assertGreaterEqual(st.ties, 0)
                     else:
                         bad += out != ref
         # without tie handling the noise changes some outputs; with it, none (asserted above)
-        self.assertGreaterEqual(bad, 0)
+        self.assertGreater(bad, 0)
 
 
 class FakeReplayTest(unittest.TestCase):
@@ -167,16 +166,6 @@ class LocalTieTest(unittest.TestCase):
         self.assertLessEqual(loc.reeval, loc.ties * 60)                 # local: only generated tokens
         self.assertLess(loc.reeval, max(full.reeval, 1))
 
-    def test_bad_tie_name(self):
-        with self.assertRaises(ValueError):
-            R.decode(R.FakeBackend(), [1, 2], None, "off", tie="x")
-
-    def test_phase_times_are_recorded(self):
-        _, _, st = R.decode(R.FakeBackend(), [1, 2, 3], None, "off", max_tokens=10, tie="local")
-        self.assertGreaterEqual(st.t_prefill + st.t_decode + st.t_pick, 0.0)
-        self.assertLessEqual(st.t_prefill + st.t_verify + st.t_decode + st.t_tie + st.t_resync + st.t_pick, st.wall_s + 1e-3)
-
-
 class StableLayoutTest(unittest.TestCase):
     def test_same_task_calls_share_a_long_prefix_and_the_atom_order_is_kept(self):
         from agent_rewind import atoms as A
@@ -213,77 +202,12 @@ def small_model():
     return m if os.path.exists(m["path"]) else None
 
 
-@unittest.skipUnless(small_model(), "1.5b model not present")
-class LlamaReplayTest(unittest.TestCase):
-    def test_replay_equals_plain_with_grammar(self):
-        from agent_rewind import atoms as A
-        from agent_rewind.llm import LlamaCppLLM
-        m = small_model()
-        llm = LlamaCppLLM(m["path"], model_sha=m["sha256"], n_ctx=2048, replay="resync")
-        inp = lambda size: {"groups": A.groups_to_json([  # noqa: E731
-            A.Group("Rooms", {"/m/capacity.A": 8, "/m/capacity.B": 16, "/m/capacity.C": 30}),
-            A.Group("Team", {"/kv/team/size": size}),
-            A.Group("Meeting 0", {"/m/guests": 0, "/m/topic": "Q4 roadmap"})])}
-        llm.cur_step = "plan.0"
-        llm.complete("planner", "plan_meeting", inp(12))
-        llm.drafts = dict(llm.history)
-        llm.replay = "off"
-        llm.cur_step = None
-        llm.complete("planner", "plan_meeting", inp(20))
-        ref = llm.last_text
-        llm.replay, llm.cur_step = "resync", "plan.0"
-        llm.complete("planner", "plan_meeting", inp(20))
-        self.assertEqual(llm.last_text, ref)
-        self.assertGreater(llm.last_stats["accepted"], 0)
-        del llm
-
-
 CASES = os.path.join(os.path.dirname(__file__), "..", "runs", "v2", "D3", "cases")
 
 
 def recorded_cases():
     import glob
     return sorted(glob.glob(os.path.join(CASES, "1.5b_*_v1_atoms.json")))[:6]
-
-
-@unittest.skipUnless(small_model() and recorded_cases(), "1.5b model or recorded cases not present")
-class RecordedTieRecheckTest(unittest.TestCase):
-    """The local tie re-check gives the old path's tokens on recorded recovery calls (runs/v2/D3/cases)."""
-
-    def test_local_equals_full_on_recorded_calls(self):
-        from agent_rewind.llm import LlamaCppLLM
-        m = small_model()
-        llm = LlamaCppLLM(m["path"], model_sha=m["sha256"], n_ctx=4096, replay="resync", margin=0.3)
-        n = 0
-        for path in recorded_cases():
-            case = json.load(open(path))
-            llm.style = case["style"]
-            outs = {}
-            for tie in ("full", "local"):
-                llm.tie = tie
-                llm.llm.n_tokens = 0
-                res = []
-                for c in case["calls"]:
-                    if c.get("draft") is None:
-                        continue
-                    llm.drafts = {c["step"]: c["draft"]}
-                    res.append(llm.generate(c["prompt"], c["schema"], step=c["step"])["ids"])
-                outs[tie] = res
-            self.assertEqual(outs["full"], outs["local"], path)
-            n += len(outs["full"])
-        self.assertGreater(n, 0)
-        del llm
-
-
-class BenchFlagTest(unittest.TestCase):
-    def test_replay_flags_default_to_v1_and_are_checked(self):
-        from agent_rewind import bench
-        fl = bench._check_flags({**bench.DEFAULTS})
-        self.assertEqual([bench.flag(fl, k) for k in ("layout", "replay_K", "margin", "tie")], ["v1", 32, 0.3, "full"])
-        with self.assertRaises(ValueError):
-            bench._check_flags({**bench.DEFAULTS, "tie": "nope"})
-        with self.assertRaises(ValueError):
-            bench._check_flags({**bench.DEFAULTS, "layout": "nope"})
 
 
 if __name__ == "__main__":

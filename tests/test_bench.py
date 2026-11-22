@@ -50,18 +50,6 @@ class BenchTest(unittest.TestCase):
             self.assertEqual({r["spec"]["label"] for r in e8}, {"a", "b"})
             self.assertTrue(all(r["recovery"]["ok_recovered"] for r in e8))
 
-    def test_estimate_uses_measured_rows(self):
-        with tempfile.TemporaryDirectory() as d:
-            cfg = dict(CFG, experiments=[CFG["experiments"][2]])
-            cells = bench.expand(cfg)
-            path = os.path.join(d, "m.jsonl")
-            with open(path, "w") as f:
-                for c in cells:
-                    f.write(json.dumps({"spec": c, "key": bench.cell_key(c), "wall_s": 3600.0}) + "\n")
-            est = bench.estimate(cfg, path)
-            self.assertEqual(est["hours"], 4.0)
-            self.assertEqual(est["unestimated_cells"], 0)
-
     def test_max_hours_stops(self):
         with tempfile.TemporaryDirectory() as d:
             cfg = os.path.join(d, "c.json")

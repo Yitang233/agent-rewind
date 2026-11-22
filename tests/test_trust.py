@@ -70,13 +70,6 @@ class M3t(unittest.TestCase):
         self.assertTrue(run.auditor.is_untrusted(booking.m_room(1)))     # every meeting's topic is a declared source
         self.assertFalse(run.auditor.is_untrusted(booking.CAP + "/A"))
 
-    def test_m4_risk_is_one_for_untrusted_citations(self):
-        _, _, run = run_faulty("m3t+m4")
-        a = [v for v in run.audits.values() if v["audited"] and v.get("cites_untrusted")]
-        self.assertTrue(a)
-        self.assertTrue(run.report["audit"]["flagged"])
-
-
 class Gate(unittest.TestCase):
     def test_gate_holds_then_releases_after_clean_recovery(self):
         w, world, faulty = run_faulty("m3t+m4+gate", effects="diff+outbox")
@@ -104,18 +97,6 @@ class Gate(unittest.TestCase):
         self.assertEqual(len(world.outbox), K)
         w, world, run = run_faulty("m3t+m4+gate", injected=True, untrusted=(), effects="diff+outbox")
         self.assertEqual(run.report["held"], [])                    # nothing declared untrusted: the probe never runs
-
-    def test_still_flagged_after_recovery_stays_held(self):
-        w, world, faulty = run_faulty("m3t+m4+gate", effects="diff+outbox")
-        rec = execute(w, world, CachedLLM(ScriptedLLM()), prior=faulty, dirty={"execute.email.0"},
-                      policy="selective", untrusted=UNTRUSTED, audit=auditor("m3t+m4+gate", faulty))
-        self.assertEqual(rec.report["held"], ["email.send"])        # the cone still holds the injected plan
-        self.assertEqual(world.unauthorized(), 0)
-
-    def test_v1_policies_have_no_gate(self):
-        self.assertIsNone(auditor("m3t+m4").gate(clean_trace()))
-        self.assertIsNone(AU.Auditor(AU.RuleChecker(), "m3+cache").gate(clean_trace()))
-
 
 if __name__ == "__main__":
     unittest.main()

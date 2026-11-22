@@ -1,5 +1,4 @@
 """Effect layer (intents, reconcile table, outbox, trust labels) and equality tiers."""
-import copy
 import unittest
 
 from agent_rewind.cutoff import Canonical, get as get_cutoff
@@ -145,9 +144,6 @@ class Trust(unittest.TestCase):
     def test_seeded_untrusted_path_and_overwrite(self):
         def inbox(c): c.write("/msg/other/in", "hi")
         def send(c): c.tool("email.send", to=["a"], body=c.read("/msg/other/in"))
-        wf = Workflow([Step("send", "x", send)])
-        w = World(KB)
-        w.kb["x"] = 1
         w1 = World(KB)
         r = execute(Workflow([Step("inbox", "o", inbox), Step("send", "x", send)]), w1, None,
                     effects="diff+outbox", untrusted={"/msg/other/in"})
