@@ -6,9 +6,8 @@
 
 University of California, San Diego
 
-[![Report](https://img.shields.io/badge/Report%20(draft)-PDF-b31b1b.svg)](report/main.pdf)
+[![Report](https://img.shields.io/badge/Report-PDF-b31b1b.svg)](report/main.pdf)
 [![Phase 1](https://img.shields.io/badge/Phase%201-PDF-b31b1b.svg)](report/phase1.pdf)
-[![tests](https://github.com/Yitang233/agent-rewind/actions/workflows/tests.yml/badge.svg)](https://github.com/Yitang233/agent-rewind/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.13-3776ab.svg)](environment.yml)
 [![llama.cpp](https://img.shields.io/badge/llama.cpp-Metal-555555.svg)](https://github.com/abetlen/llama-cpp-python)
@@ -17,6 +16,14 @@ University of California, San Diego
 <img src="report/figures/overview.png" width="92%" alt="System overview: agents read and write one versioned namespace; each step's read hashes form a verifying trace; on recovery a step is reused if its reads still verify, otherwise it reruns, and effects are reconciled by intent.">
 
 <p><em><b>Figure 1.</b> Overview. Agents read and write one versioned namespace, and each step's ordered read hashes form a verifying trace. During recovery, a step is reused if its recorded reads still verify; otherwise it reruns, decoding against its previous output. Side effects are reconciled by intent instead of being undone and redone.</em></p>
+
+<img src="report/figures/fig_example.png" width="92%" alt="Two recoveries of the 14-step booking workflow: which steps were rerun, reused, and which effects were cancelled or leaked.">
+
+<p><em><b>Figure 2.</b> Two real recoveries of the booking workflow (W1). Left: a wrong room capacity; selective recovery reruns 8 steps, reuses 6, cancels two bookings, and two already-sent e-mails stay leaked. Right: an injected agenda item; 3 steps rerun, 11 reused, the injected e-mail was already sent.</em></p>
+
+<img src="report/figures/fig_headline.png" width="92%" alt="Recovery wall time, duplicate and leaked effects, and unauthorized actions for restart, rollback, always-verify, selective and the full stack.">
+
+<p><em><b>Figure 3.</b> End-to-end recovery on the four live workloads: (a) recovery wall time with the number of correctly recovered cells, (b) duplicate and leaked effects per recovery, (c) cells with an unauthorized action. Every number is in <a href="results/README.md">results/README.md</a>'s evidence table.</em></p>
 
 </div>
 
@@ -46,9 +53,9 @@ scripted cells, pre-registered):
 - Speculative replay decodes 19–64% of a plain rerun's tokens, with a median
   recovery LLM wall ratio of 0.38–0.70 and 81/81 text-identical calls.
 - Selective recovery re-sends no duplicate effects (restart: 0.6–2.0 per
-  recovery). A gate on irreversible actions leaves 0 unauthorized actions in
-  6/6 injection cells (3/3 and 1/3 without it), but it can hold good work: the
-  W4.ipi full stack recovers 2/5.
+  recovery). A gate on irreversible actions leaves 0 unauthorized actions in the
+  30 fault cells (5 for restart and selective, 7 for always-verify), but it can
+  hold good work: the W4.ipi full stack recovers 2/5.
 - Trust-aware audits do not beat always-verify (more tokens, false positives
   on W4.ipi); we report this as a negative result.
 
@@ -212,7 +219,7 @@ the `plot` extra adds `matplotlib`.
 
 Register the downloaded files in `runs/env.json` (not tracked), using absolute
 paths and each file's SHA-256 (`shasum -a 256 FILE`), which keys the call cache.
-The tests and `scripts/` read both fields:
+The real-model grids and `scripts/` read both fields:
 
 ```json
 {"models": {"7b":   {"path": "/abs/path/Qwen2.5-7B-Instruct-Q4_K_M.gguf", "sha256": "<sha256 of the file>"},
@@ -229,13 +236,12 @@ git clone https://github.com/microsoft/TAMAS.git ~/src/TAMAS   # or set TAMAS_DI
 To check speed, logit access and KV-cache cropping on a new machine, run:
 
 ```bash
-python scripts/bench_llm.py --model /abs/path/Qwen2.5-7B-Instruct-Q4_K_M.gguf --out runs/bench_7b.json
+python scripts/dev/bench_llm.py --model /abs/path/Qwen2.5-7B-Instruct-Q4_K_M.gguf --out runs/bench_7b.json
 ```
 
-`tests/test_env.py` also expects these benchmark fields (`prefill_tps`,
-`decode_tps`, `verify_ms_64`, `equiv_rate`, `kv_crop_ok`, `peak_rss_mb`) in each
-model's `runs/env.json` entry. Copy them over from the `--out` file (keep the
-absolute `path`), or that test fails.
+Its `--out` file holds `prefill_tps`, `decode_tps`, `verify_ms_64`, `equiv_rate`,
+`kv_crop_ok` and `peak_rss_mb`; you may copy them into the model's `runs/env.json`
+entry next to `path` and `sha256`.
 
 ---
 
@@ -248,8 +254,8 @@ prints how the fault propagated and compares the recovery policies:
 python -m agent_rewind.demo --fault wrong_capacity
 ```
 
-Run the test suite (unit, property, replay-equivalence and audit-cache tests;
-the model tests are skipped when no model is configured):
+Run the offline test suite (about 20 s; no model needed; the W4 tests need the
+TAMAS clone). What each file covers: [`tests/README.md`](tests/README.md).
 
 ```bash
 python -m unittest -q
@@ -273,9 +279,11 @@ are missing.
 | Phase 2 grid (E5v2–E8v2, 7B) | `caffeinate -i python -m agent_rewind.bench --config bench/configs/v2.json --resume` | 574 cells (see `results/v2/preregistration.json`) | not timed |
 | Phase 2 scripted E2v2 | `python -m agent_rewind.bench --config bench/configs/e2v2.json` | 900 cells | minutes |
 | Phase 2 W3 rerun after the harness fixes | `python -m agent_rewind.bench --config bench/configs/v2_fix.json --out runs/v2_fix` | 50 cells | not timed |
+| Phase 2 v3 run (always-verify, timeout faults, two post-hoc fixes) | `caffeinate -i python -m agent_rewind.bench --config bench/configs/v3.json --resume --max-hours 2.5` | 113 cells | about 1.4 h |
+| Phase 2 v3 check and figures | `for e in E8v3 E8v3f E8v3r E8v3g; do python scripts/check_cells.py runs/v3/cells.jsonl --exp $e --ref runs/v2/cells.jsonl --ref runs/v2_fix/cells.jsonl; done; python scripts/analyze_v3.py runs/v3` | `runs/v3/figures/` (T1v3, T4–T7, F9, `analysis_v3.json`; copy in [`results/v3/`](results/v3)) | seconds |
 | Phase 2 figures and tables | `python scripts/analyze_v2.py` | `runs/v2/figures/` (F1–F8, T1–T3, `analysis_v2.json`; a copy is in [`results/v2/figures/`](results/v2/figures)) | seconds |
 | Phase 1 figures and tables | `python scripts/analyze.py` | `runs/figures/` | seconds |
-| Final report (draft) | `cd report && tectonic main.tex` | `report/main.pdf` | seconds |
+| Final report figures, then report | `python scripts/make_report_figures.py && cd report && tectonic main.tex` | `report/main.pdf` | seconds |
 | Phase 1 report | `cd report && tectonic phase1.tex` | `report/phase1.pdf` | seconds |
 
 Add `--dry-run` to any grid command to run every cell with the scripted model
@@ -319,37 +327,46 @@ Values are mean ± sd. Full tables and every caveat are in the
 | **H2 / C-B** Atoms break even | p\* by wall time: W1 0.49 [0.33, 0.73], W3 unbounded, W4 0 | Supported as written, weakly (only W1 is non-trivial) |
 | **H3 / C-C** Trust-aware audits (m3t) | Detect injections (3/3) but cost more tokens than always-verify (1588 vs 1263 on W1) and have 0.67 false positives per clean W4.ipi run | **Not supported** |
 | **H4 / C-D** Placement and gate (M4) | m3t+m4 pooled detection 0.53 at 734 tokens, below a budget-matched random baseline (0.84); gate: 0 unauthorized in 6/6 injection cells, 3/3 and 1/3 without | Supported as written, weakly; the gate costs W4.ipi 2/5 recovered |
+| **Always-verify end to end** (E8v3) | 27/30 fault cells recovered, the same as selective without audits; recovery wall 2.7 / 1.5 / 1.6 / 2.5x of selective + M1 (W1 / W3 / W4.ipi / W4.byz); 589–1224 extra audit tokens per cell | Descriptive: the audits buy no correctness here |
+| **Timeout faults** (E8v3f) | `timeout_team` (W1): 4/5 in every arm; `timeout_item` (W4.ipi): 5/5 in every arm except the full-stack gate arm, 2/5 (3 posts held) | Same as restart, except the gate arm on `timeout_item` |
+| **`stale_code` engine fix, post hoc** (E8v3r) | 15/15 with `revert=on` against 12/15 without (selective 5/5 against 4/5; restart 5/5) | Supported |
+| **Gate release rule, post hoc** (E8v3g) | W4.ipi full stack 4/5 against 2/5 without the rule (restart 5/5), 0 unauthorized; clean runs still hold a post in 2/3 | Supported (within one cell of restart); does not help on `timeout_item` |
 | **H5** Selective recovery end to end | Table 2 below: fewer reruns and less wall time on 4 of 4 workloads; 0 duplicate effects against 0.6–2.0 for restart | Supported (W3 marginal) |
 
-**Table 2. End-to-end recovery (E8v2, atoms, 7B).** Steps rerun, recovery wall
+**Table 2. End-to-end recovery (E8v2 and E8v3, atoms, 7B).** Steps rerun, recovery wall
 time, decoded tokens and the number of cells recovered correctly. W3 rows are a
-rerun after two harness fixes (`runs/v2_fix`).
+rerun after two harness fixes (`results/v2/v2_fix`).
 
 | Workload | Method | Steps rerun | Wall (s) | Decoded tok. | Recovered |
 |---|---|---:|---:|---:|---:|
 | W1 | restart | 14.0 | 38.9 | 740 | 8/10 |
+| W1 | always-verify | 6.3 | 25.1 | 470 | 8/10 |
 | W1 | selective | 6.3 | 24.6 | 470 | 8/10 |
 | W1 | selective + M1 | 6.3 | **9.3** | **85** | 8/10 |
 | W3 | restart | 5.0 | 9.4 | 168 | 10/10 |
+| W3 | always-verify | 4.0 | 10.3 | 170 | 9/10 |
 | W3 | selective | 4.0 | 8.6 | 170 | 9/10 |
 | W3 | selective + M1 | 4.0 | **6.8** | **66** | 9/10 |
 | W4.ipi | restart | 6.0 | 13.7 | 250 | 5/5 |
+| W4.ipi | always-verify | 3.8 | 11.1 | 202 | 5/5 |
 | W4.ipi | selective | 3.8 | 11.0 | 202 | 5/5 |
 | W4.ipi | selective + M1 | 3.8 | **6.8** | **71** | 5/5 |
 | W4.ipi | + audits and gate | 3.8 | 8.2 | 71 | 2/5 |
 | W4.byz | restart | 6.0 | 13.5 | 249 | 5/5 |
+| W4.byz | always-verify | 2.0 | 9.5 | 175 | 5/5 |
 | W4.byz | selective | 2.0 | 9.5 | 175 | 5/5 |
 | W4.byz | selective + M1 | 2.0 | **3.8** | **18** | 5/5 |
 
-<sub>W1 `ok_recovered` is 8/10 for every method (repeat 4 fails everywhere, cause
-unexplained). The v1 numbers (2,215 cells) are in the Phase 1 report.</sub>
+<sub>W1 `ok_recovered` is 8/10 for every method: in repeat 4 the clean reference run
+itself fails the workload's check in all ten cells, and every recovery reproduces that
+reference (values equal 10/10), so it separates no method. The v1 numbers (2,215 cells) are in the Phase 1 report.</sub>
 
 <div align="center">
-<img src="report/figures/fig1_cone_vs_suffix_v2.png" width="92%" alt="Steps rerun against fault position for restart, rollback and selective recovery">
-<p><em><b>Figure 4.</b> Steps rerun against fault position (E2v2, synthetic 24-step DAGs). Selective recovery (blue, green) follows the dependency cone (dotted); rollback (orange) follows the time-order suffix (dashed); restart stays near 22.5.</em></p>
+<img src="report/figures/fig_cone.png" width="92%" alt="Steps rerun against fault position for restart, rollback and selective recovery">
+<p><em><b>Figure 4.</b> Steps rerun against fault position on scripted W2 DAGs (24 steps, 5 repeats, 900 cells in all). Selective recovery follows the dependency cone; rollback follows the time-order suffix; restart is flat. Three of the six settings are shown; the rest agree (`results/v2/figures/F1`).</em></p>
 
-<img src="report/figures/fig4_replay_v2.png" width="92%" alt="Decoded tokens and wall time of replayed reruns relative to plain reruns">
-<p><em><b>Figure 5.</b> Speculative replay (E5v2, tuned). Top: decoded tokens relative to a plain rerun. Bottom: recovery wall time relative to a plain rerun. Hatched bars use atom-structured output.</em></p>
+<img src="report/figures/fig_replay.png" width="92%" alt="Decoded tokens and wall time of replayed reruns relative to plain reruns">
+<p><em><b>Figure 5.</b> Cost of a replayed rerun relative to a plain rerun (held-out repeats, 7B): decoded tokens (left) and LLM wall time (right, median with its 95% interval), for a prefix draft and the resynchronising draft.</em></p>
 </div>
 
 ---
@@ -358,37 +375,47 @@ unexplained). The v1 numbers (2,215 cells) are in the Phase 1 report.</sub>
 
 ```
 agent-rewind/
-├── agent_rewind/
-│   ├── store.py        namespace tree: MVCC versions, Merkle hashes, branches, cones
-│   ├── engine.py       execute(): one loop for clean, faulty and recovery runs
-│   ├── deps.py         depth cuts (agent / step / artifact / field), overhead meter
-│   ├── cutoff.py       equality tiers: exact | canonical
-│   ├── effects.py      intents, idempotency keys, intent diff, outbox, compensation
-│   ├── llm.py          scripted and llama.cpp backends, call cache, token accounting
-│   ├── replay.py       M1 speculative replay with near-tie re-verification
-│   ├── atoms.py        M2 atom schema, parser, canonical order
-│   ├── audit.py        M3 scoped and cached audits, M4 placement
-│   ├── world.py        simulated tools with effect classes
-│   ├── faults.py       wrong / stale / timeout / malicious faults
-│   ├── workloads/      booking (W1), dag (W2), codefix (W3, git workspace), tamas (W4)
-│   ├── bench.py        experiment grid runner
-│   ├── experiment.py   propagation and policy comparison used by the demo
-│   ├── demo.py         single-workflow demonstration
-│   └── recovery.py, workflow.py, trace.py   compatibility layer from the first prototype
-├── bench/configs/      experiment grids: phase1, phase1_baselines, full, v2, e2v2, v2_fix
-├── scripts/            analyze.py, analyze_v2.py, check_cells.py, phase1_tables.py, bench_llm.py, ...
-├── results/            raw cells and logs behind the Phase 1 report tables
-│   └── v2/             raw cells, rerun, pre-registration, verdicts (RESULTS.md) and figures for the v2 experiments
-├── tests/              unit, property, replay-equivalence and audit-cache tests
-├── report/             main.tex (final report), phase1.tex, refs.bib, figures/
-├── environment.yml     conda environment (agent-rewind)
-├── pyproject.toml      package metadata and optional extras
-├── CITATION.cff        citation metadata
-└── LICENSE             MIT license
+├── agent_rewind/               the library: recovery engine, workloads, grid runner
+│   ├── store.py                namespace tree: MVCC versions, Merkle hashes, branches, cones
+│   ├── engine.py               execute(): one loop for clean, faulty and recovery runs
+│   ├── deps.py                 depth cuts (agent / step / artifact / field), overhead meter
+│   ├── cutoff.py               equality tiers: exact | canonical
+│   ├── effects.py              intents, idempotency keys, intent diff, outbox, compensation
+│   ├── llm.py                  scripted and llama.cpp backends, call cache, token accounting
+│   ├── replay.py               M1 speculative replay with near-tie re-verification
+│   ├── atoms.py                M2 atom schema, parser, canonical order
+│   ├── audit.py                M3 scoped and cached audits, M4 placement, trust gate
+│   ├── world.py                simulated tools with effect classes
+│   ├── faults.py               wrong / stale / timeout / malicious faults
+│   ├── workloads/              booking (W1), dag (W2), codefix (W3, git workspace), tamas (W4)
+│   ├── bench/                  grid runner, `python -m agent_rewind.bench`
+│   │   ├── config.py           flag defaults and choices
+│   │   ├── grid.py             config -> cell specs and cell keys
+│   │   ├── cases.py            workload cases and outcome checks
+│   │   ├── models.py           model loading, audit checkers and calibration
+│   │   ├── metrics.py          call recording, hash timing, bookkeeping
+│   │   ├── cell.py             one cell: faulty run, recovery, clean reference
+│   │   ├── progress.py         result rows, progress file, hours estimate
+│   │   └── cli.py              command line (`__main__.py` calls it)
+│   └── recovery.py, experiment.py, demo.py   Phase 1 interface (demo, unit tests)
+├── bench/configs/              experiment grids and their index (README.md)
+├── scripts/                    analysis and checks; dev/ holds one-off model tools (README.md)
+├── results/                    shared copy of the cells and figures behind the reports
+│   ├── README.md               requirement-to-evidence table and the commands that recompute it
+│   ├── phase1/, phase1_baselines/, logs/   Phase 1 cells and logs
+│   ├── v2/                     v2 cells, E2v2, v2_fix, pre-registration, verdicts (RESULTS.md), figures
+│   └── v3/                     v3 cells, pre-registration, tables and figures
+├── tests/                      offline suite (scripted model): engine, effects, audits, replay, workloads, grid runner
+├── report/                     main.tex (final report), phase1.tex, refs.bib, figures/, generated/ (v3.tex macros)
+├── environment.yml             conda environment (agent-rewind)
+├── pyproject.toml              package metadata and optional extras
+├── CITATION.cff                citation metadata
+└── LICENSE                     MIT license
 ```
 
-Experiment output (`runs/`) is not tracked. `results/` holds a snapshot of the cells behind the
-Phase 1 report; `python scripts/phase1_tables.py` recomputes its three tables.
+Experiment output (`runs/`) is not tracked. `results/` holds a snapshot of the cells behind both
+reports; `python scripts/phase1_tables.py` recomputes the three Phase 1 tables, and the commands at the
+top of [`results/README.md`](results/README.md) recompute the Phase 2 tables and figures.
 
 ---
 
@@ -397,17 +424,21 @@ Phase 1 report; `python scripts/phase1_tables.py` recomputes its three tables.
 - **W3 is marginal.** After the harness fixes, restart and rollback recover 10/10
   and selective 9/10; selective alone saves no wall time (ratio 0.94). The one
   failure (`stale_code`, repeat 0) is an engine ordering bug: a rerun step
-  still reads the faulty run's edit. An opt-in fix (`revert_early`, bench flag
-  `revert`) exists with tests, but the 15 affected cells are not rerun yet.
-- **Missing comparison.** Always-verify appears only as a detector, not as an
-  end-to-end recovery row. The fault-stage sweep exists only on scripted W2
-  (live workloads have 1–2 fixed fault positions), and `timeout` and planner
-  faults are not in the live v2 grid.
+  still reads the faulty run's edit. A post-hoc opt-in fix (`revert_early`, bench flag
+  `revert=on`) recovers all 15 rerun `stale_code` cells (15/15 against 12/15); the
+  table keeps the unfixed rows.
+- **Grid gaps.** The fault-stage sweep exists only on scripted W2 (live
+  workloads have 1–2 fixed fault positions; `results/v3/figures/T7_fault_stage.md`
+  lists reruns by faulted step). Planner faults of the teammates' pull request are
+  not in this repository, so they are not in the grid. Both fixes (`revert=on`,
+  `release=on`) are post hoc.
 - **Small n and one model.** Held-out groups have n = 3; E8v2 has 5 variants;
   one 7B model at temperature 0 on one laptop. Reuse validity is 60/60 with an
   effective n of about 20 and no W3 samples.
 - **Audits and gate.** H3 is not supported, and the gate can hold good work
-  (W4.ipi full stack 2/5 recovered; a clean post held in 2 of 3 clean runs).
+  (W4.ipi full stack 2/5 recovered; a clean post held in 2 of 3 clean runs). The
+  post-hoc release rule (`release=on`) lifts W4.ipi to 4/5 with 0 unauthorized, but
+  does not change clean-run holds or help on `timeout_item` (2/5).
 - **Replay equivalence is empirical.** 81/81 calls identical at margin 0.1,
   which was chosen after a held-out failure at margin 0.0.
 - **Non-LLM state** is a git workspace; there is no browser or VM snapshot.

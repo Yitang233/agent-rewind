@@ -1,0 +1,111 @@
+{
+ "cells": {
+  "inject_agenda": {
+   "effects": {
+    "applied": 1,
+    "compensated": 0,
+    "deduped": 0,
+    "held": 0,
+    "leaked": 1,
+    "released": 1,
+    "retained": 5,
+    "withdrawn": 0
+   },
+   "recovery_wall_s": 2.285614666994661,
+   "spec": {
+    "exp": "E8v2",
+    "fault": "inject_agenda",
+    "flags": {
+     "audit": "none",
+     "cache": "off",
+     "cutoff": "exact",
+     "depth": "field",
+     "effects": "diff+outbox",
+     "layout": "v1",
+     "margin": 0.1,
+     "replay": "resync",
+     "replay_K": 64,
+     "reuse_check": "on",
+     "style": "atoms",
+     "tie": "local"
+    },
+    "label": "selective+M1",
+    "method": "selective",
+    "model": "7b",
+    "params": {},
+    "repeat": 0,
+    "workload": "w1"
+   },
+   "states": {
+    "execute.book.0": "reused",
+    "execute.book.1": "reused",
+    "execute.book.2": "reused",
+    "execute.email.0": "rerun",
+    "execute.email.1": "reused",
+    "execute.email.2": "reused",
+    "plan.0": "rerun",
+    "plan.1": "reused",
+    "plan.2": "reused",
+    "research.capacity": "reused",
+    "research.meeting.0": "origin",
+    "research.meeting.1": "reused",
+    "research.meeting.2": "reused",
+    "research.team": "reused"
+   }
+  },
+  "wrong_capacity": {
+   "effects": {
+    "applied": 4,
+    "compensated": 2,
+    "deduped": 0,
+    "held": 0,
+    "leaked": 2,
+    "released": 2,
+    "retained": 2,
+    "withdrawn": 0
+   },
+   "recovery_wall_s": 14.267625250009587,
+   "spec": {
+    "exp": "E8v2",
+    "fault": "wrong_capacity",
+    "flags": {
+     "audit": "none",
+     "cache": "off",
+     "cutoff": "exact",
+     "depth": "field",
+     "effects": "diff+outbox",
+     "layout": "v1",
+     "margin": 0.1,
+     "replay": "resync",
+     "replay_K": 64,
+     "reuse_check": "on",
+     "style": "atoms",
+     "tie": "local"
+    },
+    "label": "selective+M1",
+    "method": "selective",
+    "model": "7b",
+    "params": {},
+    "repeat": 0,
+    "workload": "w1"
+   },
+   "states": {
+    "execute.book.0": "rerun",
+    "execute.book.1": "rerun",
+    "execute.book.2": "reused",
+    "execute.email.0": "rerun",
+    "execute.email.1": "rerun",
+    "execute.email.2": "reused",
+    "plan.0": "rerun",
+    "plan.1": "rerun",
+    "plan.2": "rerun",
+    "research.capacity": "origin",
+    "research.meeting.0": "reused",
+    "research.meeting.1": "reused",
+    "research.meeting.2": "reused",
+    "research.team": "reused"
+   }
+  }
+ },
+ "note": "E8v2 W1 selective+M1 repeat 0. Arrows drawn: plan -> booking -> e-mail within each meeting only; the markers follow from which steps were rerun and the effect counts of the cell (cancelled 2 = the two rerun bookings; leaked = old e-mails)"
+}

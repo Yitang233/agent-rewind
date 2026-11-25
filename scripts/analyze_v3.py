@@ -19,8 +19,6 @@ release rule). Their rows are shown next to the unfixed rows, never instead of t
 from __future__ import annotations
 
 import argparse
-import json
-import statistics as st
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -38,7 +36,7 @@ sp, load, jdump = A2.sp, A2.load, A2.jdump
 
 ARMS = ["restart", "rollback", "always-verify", "selective", "selective+M1", "selective+M1+M3t/M4+gate"]
 SHORT = {"restart": "restart", "rollback": "rollback", "always-verify": "always-verify", "selective": "selective",
-         "selective+M1": "sel.+M1", "selective+M1+M3t/M4+gate": "+M3t/M4+gate"}
+         "selective+M1": "sel.+replay", "selective+M1+M3t/M4+gate": "full stack"}
 WORK = ["w1", "w3", "w4.ipi", "w4.byz"]
 WNAME = {"w1": "W1", "w3": "W3", "w4.ipi": "W4.ipi", "w4.byz": "W4.byz"}
 TEXW = {"w1": "Wone", "w3": "Wthree", "w4.ipi": "Wfouripi", "w4.byz": "Wfourbyz"}
@@ -164,6 +162,17 @@ def t1v3(e8, e83):
         s = tab[f"{w}/selective+M1"]
         TEX[f"SelMoneWall{TEXW[w]}"] = f1(s["recovery_wall_s"][0])
         TEX[f"AvOverMone{TEXW[w]}"] = f"{d['recovery_wall_s'][0] / s['recovery_wall_s'][0]:.1f}"
+    rowname = {"restart": "Restart", "rollback": "Rollback", "always-verify": "Av", "selective": "Sel", "selective+M1": "SelM",
+               "selective+M1+M3t/M4+gate": "Gate"}
+    for w in WORK:                                    # one table row per (workload, arm): steps rerun, decoded tokens, inference tokens
+        for m in ARMS:
+            d = tab[f"{w}/{m}"]
+            TEX[f"Row{TEXW[w]}{rowname[m]}"] = (f"{SHORT[m]} & {f1(d['n_rerun'][0])} & {f1(d['decoded'][0], 0)} & "
+                                                f"{f1(d['inference_tokens'], 0)} \\\\")
+    toks = [(tab[f"{w}/always-verify"]["audit_tokens"], w) for w in WORK]
+    lo, hi = min(toks), max(toks)
+    TEX["AvAudTokMin"], TEX["AvAudTokMax"] = f1(lo[0], 0), f1(hi[0], 0)
+    TEX["AvAudTokMinWl"], TEX["AvAudTokMaxWl"] = WNAME[lo[1]], WNAME[hi[1]]
     av_all = [r for r in av.values()]
     TEX["AvOkAll"] = frac([sum(bool(r["recovery"]["ok_recovered"]) for r in av_all), len(av_all)])
     TEX["AvCells"] = str(len(av_all))
@@ -328,7 +337,7 @@ def stage_table(e8, e83f):
     for k, d in out.items():
         t = tag.get(k)
         if t:
-            TEX.update({f"Stage{t}Pos": str(d["stage"] + 1), f"Stage{t}Steps": str(d["steps"]), f"Stage{t}Rerun": f1(d["rerun_selective"]),
+            TEX.update({f"Stage{t}Pos": str(d["stage"]), f"Stage{t}Steps": str(d["steps"]), f"Stage{t}Rerun": f1(d["rerun_selective"]),
                         f"Stage{t}Restart": f1(d["rerun_restart"]), f"Stage{t}WallR": f1(d["wall_restart"]), f"Stage{t}WallM": f1(d["wall_selective_m1"])})
     RES["T7"] = out
     return out

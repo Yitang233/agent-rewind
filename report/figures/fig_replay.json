@@ -1,0 +1,19 @@
+{
+ "note": "E5v2 7B held-out repeats; medians; whiskers on wall: 95% CI of the median; dotted line = plain rerun",
+ "w1/prefix/decoded_ratio_median": 0.5341001155485902,
+ "w1/prefix/wall_ratio_median": 0.8942393798654595,
+ "w1/resync/decoded_ratio_median": 0.1906885758998435,
+ "w1/resync/wall_ratio_median": 0.3823092312305182,
+ "w3/prefix/decoded_ratio_median": 0.8820418781184698,
+ "w3/prefix/wall_ratio_median": 0.9623483512848032,
+ "w3/resync/decoded_ratio_median": 0.640990990990991,
+ "w3/resync/wall_ratio_median": 0.6827952115024964,
+ "w4.byz/prefix/decoded_ratio_median": 0.5689864132168144,
+ "w4.byz/prefix/wall_ratio_median": 0.9908315929133409,
+ "w4.byz/resync/decoded_ratio_median": 0.21310552440481662,
+ "w4.byz/resync/wall_ratio_median": 0.5022559093553092,
+ "w4.ipi/prefix/decoded_ratio_median": 0.844260840915427,
+ "w4.ipi/prefix/wall_ratio_median": 0.9386016797543004,
+ "w4.ipi/resync/decoded_ratio_median": 0.4243089235989452,
+ "w4.ipi/resync/wall_ratio_median": 0.7005517629855313
+}

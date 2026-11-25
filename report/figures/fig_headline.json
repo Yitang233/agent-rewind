@@ -1,0 +1,157 @@
+{
+ "note": "bars (a): mean over fault cells, whiskers sd, label = ok_recovered cells in one row above each workload group (red when two or more miss); rollback omitted in (a): its wall time equals restart's; (b),(c): pooled over all 30 fault cells per method",
+ "pooled": {
+  "always-verify": {
+   "duplicates": 0.0,
+   "leaked": 0.7333333333333333,
+   "unauthorized_cells": 7
+  },
+  "restart": {
+   "duplicates": 0.8333333333333334,
+   "leaked": 1.5666666666666667,
+   "unauthorized_cells": 5
+  },
+  "rollback": {
+   "duplicates": 0.8333333333333334,
+   "leaked": 1.5666666666666667,
+   "unauthorized_cells": 5
+  },
+  "selective": {
+   "duplicates": 0.0,
+   "leaked": 0.7333333333333333,
+   "unauthorized_cells": 5
+  },
+  "selective+M1": {
+   "duplicates": 0.0,
+   "leaked": 0.7333333333333333,
+   "unauthorized_cells": 5
+  },
+  "selective+M1+M3t/M4+gate": {
+   "duplicates": 0.0,
+   "leaked": 0.36666666666666664,
+   "unauthorized_cells": 0
+  }
+ },
+ "wall": {
+  "w1/always-verify": {
+   "n": 10,
+   "ok_recovered": 8,
+   "wall_mean_s": 25.145747424894942,
+   "wall_sd_s": 11.742080553360514
+  },
+  "w1/restart": {
+   "n": 10,
+   "ok_recovered": 8,
+   "wall_mean_s": 38.9032271625998,
+   "wall_sd_s": 0.3322769507028835
+  },
+  "w1/selective": {
+   "n": 10,
+   "ok_recovered": 8,
+   "wall_mean_s": 24.620805520802968,
+   "wall_sd_s": 12.528175566207965
+  },
+  "w1/selective+M1": {
+   "n": 10,
+   "ok_recovered": 8,
+   "wall_mean_s": 9.252934058301616,
+   "wall_sd_s": 5.673357982587332
+  },
+  "w1/selective+M1+M3t/M4+gate": {
+   "n": 10,
+   "ok_recovered": 8,
+   "wall_mean_s": 10.278663049801253,
+   "wall_sd_s": 6.350051744812055
+  },
+  "w3/always-verify": {
+   "n": 10,
+   "ok_recovered": 9,
+   "wall_mean_s": 10.31114687938243,
+   "wall_sd_s": 0.7470803367083253
+  },
+  "w3/restart": {
+   "n": 10,
+   "ok_recovered": 10,
+   "wall_mean_s": 9.379505716805578,
+   "wall_sd_s": 1.5093835477841222
+  },
+  "w3/selective": {
+   "n": 10,
+   "ok_recovered": 9,
+   "wall_mean_s": 8.614196216396522,
+   "wall_sd_s": 0.7953624106991096
+  },
+  "w3/selective+M1": {
+   "n": 10,
+   "ok_recovered": 9,
+   "wall_mean_s": 6.762906150304479,
+   "wall_sd_s": 3.989375395074415
+  },
+  "w3/selective+M1+M3t/M4+gate": {
+   "n": 10,
+   "ok_recovered": 9,
+   "wall_mean_s": 7.461487766797655,
+   "wall_sd_s": 3.72574986377407
+  },
+  "w4.byz/always-verify": {
+   "n": 5,
+   "ok_recovered": 5,
+   "wall_mean_s": 9.545670882984997,
+   "wall_sd_s": 0.7422330314814939
+  },
+  "w4.byz/restart": {
+   "n": 5,
+   "ok_recovered": 5,
+   "wall_mean_s": 13.492090258194366,
+   "wall_sd_s": 0.7827489619188811
+  },
+  "w4.byz/selective": {
+   "n": 5,
+   "ok_recovered": 5,
+   "wall_mean_s": 9.478697033406934,
+   "wall_sd_s": 0.7197261524205163
+  },
+  "w4.byz/selective+M1": {
+   "n": 5,
+   "ok_recovered": 5,
+   "wall_mean_s": 3.763016274990514,
+   "wall_sd_s": 1.1896861338609617
+  },
+  "w4.byz/selective+M1+M3t/M4+gate": {
+   "n": 5,
+   "ok_recovered": 5,
+   "wall_mean_s": 4.042298249801388,
+   "wall_sd_s": 1.1717501193508022
+  },
+  "w4.ipi/always-verify": {
+   "n": 5,
+   "ok_recovered": 5,
+   "wall_mean_s": 11.077204925194383,
+   "wall_sd_s": 1.6522204338479292
+  },
+  "w4.ipi/restart": {
+   "n": 5,
+   "ok_recovered": 5,
+   "wall_mean_s": 13.651320249796845,
+   "wall_sd_s": 1.2974773976289444
+  },
+  "w4.ipi/selective": {
+   "n": 5,
+   "ok_recovered": 5,
+   "wall_mean_s": 10.971824775001732,
+   "wall_sd_s": 1.8636979227215416
+  },
+  "w4.ipi/selective+M1": {
+   "n": 5,
+   "ok_recovered": 5,
+   "wall_mean_s": 6.821297974797199,
+   "wall_sd_s": 2.1324822933474112
+  },
+  "w4.ipi/selective+M1+M3t/M4+gate": {
+   "n": 5,
+   "ok_recovered": 2,
+   "wall_mean_s": 8.224206641805358,
+   "wall_sd_s": 2.4151562787293526
+  }
+ }
+}
