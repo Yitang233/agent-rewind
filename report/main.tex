@@ -36,7 +36,7 @@
 \definecolor{soft}{HTML}{E8F1F8}
 
 \title{\Large\bfseries Provenance All the Way Down: Selective Recovery\\for Multi-Agent LLM Workflows}
-\author{Yitang Gao \quad Qinlin Chen \quad Xueru Song \quad Kai Zhang\\ \normalsize University of California, San Diego}
+\author{Yitang Gao \quad Qinlin Chen \quad Xueru Song \quad Kai Zhang\\ \normalsize UC San Diego, CSE 291A (Fall 2026) \quad Code and data: \url{https://github.com/Yitang233/agent-rewind}}
 \date{}
 
 \begin{document}
@@ -273,7 +273,8 @@ ported as native workflows: Byzantine agents (\texttt{w4.byz}) and indirect prom
 injection (\texttt{w4.ipi}), whose effects are social-media posts.
 
 \paragraph{Platform and runs.} One Apple M5 Pro laptop (24\,GB), Qwen2.5-7B-Instruct
-Q4\_K\_M, greedy decoding, prompt cache off. Phase~1 ran 1{,}675 cells to measure
+Q4\_K\_M on llama-cpp-python 0.3.36, greedy decoding, no call cache in live cells;
+the model loads once per grid, so wall times are steady state. Phase~1 ran 1{,}675 cells to measure
 propagation. The Phase~2 grid was pre-registered and ran 574 live cells plus 900
 scripted cells with zero errors; W3 recovery rows are a rerun of 50 cells after two
 harness fixes (\S\ref{sec:experience}). A third, pre-registered run of 113 cells
@@ -548,9 +549,6 @@ audits to provenance does not replace always-verify as a detector. The clearest
 lesson is about irreversible effects: no recovery method can recall them, so a
 gate before release is what prevents unauthorized actions, at the price of holding
 some good work back.
-
-\paragraph{Acknowledgments.} Course project for CSE 291A at UC San Diego (Fall 2026).
-Code and data: \url{https://github.com/Yitang233/agent-rewind}.
 
 % references are left out of the page count when \vmeasure is defined
 \ifdefined\vmeasure\else

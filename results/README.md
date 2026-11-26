@@ -12,7 +12,7 @@ cp -R results/phase1 runs/phase1 && cp -R results/phase1_baselines runs/phase1_b
 python scripts/analyze_v2.py          # rewrites runs/v2/figures (T1-T3, F1-F8, analysis_v2.json)
 python scripts/analyze_v3.py runs/v3  # rewrites runs/v3/figures (T1v3, T4-T7, F9, analysis_v3.json) and report/generated/v3.tex
 python scripts/make_report_figures.py # report/figures/fig_*.pdf and .json
-python -m unittest -q                 # 169 tests; 7 model-dependent ones skip without a model file
+python -m unittest -q                 # 134 tests, no model needed; the W4 tests skip without the TAMAS clone
 ```
 
 | Option 5 requirement or metric | Evidence (shared copy) | Result | Recomputed by |
@@ -40,7 +40,7 @@ Verdict text for every pre-registered claim: [`v2/RESULTS.md`](v2/RESULTS.md) an
 
 # Phase 1 results and logs
 
-These are the raw cells and logs behind Tables 1–3 of `report/phase1.tex`. They were produced on an Apple M5 (32 GB) with Qwen2.5-7B-Instruct Q4_K_M; model hashes and speeds are in `models.json`. `runs/` stays untracked, and this folder is a snapshot of it.
+These are the raw cells and logs behind Tables 1–3 of `report/phase1.tex`. They are a rerun of both Phase 1 grids on an Apple M5 laptop with Qwen2.5-7B-Instruct Q4_K_M; model hashes and speeds are in `models.json`. `runs/` stays untracked, and this folder is a snapshot of it.
 
 To recompute every number in the three tables from these files, run:
 
